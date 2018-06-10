@@ -1,0 +1,12 @@
+> setupGitRepo
+> scalafmtCli
+> scalafmtCliTest
+> check
+> scalafmtCliDiff
+> scalafmtCliDiffTest
+> check
+> scalafmtCli --diff-branch master
+> scalafmtCli --diff
+> scalafmtCli --diff --test
+> check
+
