@@ -11,7 +11,7 @@ jobs:
   include:
     - env: TEST="scalafmt"
       script: ./bin/scalafmt --test
-    - env: TEST="sbt"
+    - env: TEST="plugin/scripted"
       script:
         - sbt plugin/scripted
     - stage: release
