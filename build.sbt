@@ -1,7 +1,7 @@
 inThisBuild(
   List(
     version ~= { dynVer =>
-      if (sys.env.contains("TRAVIS_TAG")) dynVer
+      if (isTravisTag) dynVer
       else dynVer + "-SNAPSHOT"
     },
     resolvers += Resolver.sonatypeRepo("releases"),
@@ -16,7 +16,10 @@ lazy val plugin = project
     moduleName := "sbt-scalafmt",
     libraryDependencies ++= List(
       // depend on fatjar module with shaded dependencies to avoid classpath conflicts.
-      "com.geirsson" %% "scalafmt-big" % "1.6.0-RC3"
+      "com.geirsson" %% "scalafmt-big" % {
+        if (isTravisTag) version.in(ThisBuild).value
+        else "1.6.0-RC3"
+      }
     ),
     sbtPlugin := true,
     scriptedBufferLog := false,

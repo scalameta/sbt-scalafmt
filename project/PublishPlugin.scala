@@ -1,4 +1,3 @@
-import com.typesafe.sbt.SbtPgp.autoImport.PgpKeys
 import sbt.Def
 import sbt._
 import sbt.Keys._
@@ -9,9 +8,13 @@ object PublishPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
   override def requires = JvmPlugin
-
-  private def isTravisSecure =
-    sys.env.get("TRAVIS_SECURE_ENV_VARS").contains("true")
+  object autoImport {
+    def isTravisTag: Boolean =
+      System.getProperty("TRAVIS_TAG") != null
+    def isTravisSecure: Boolean =
+      System.getProperty("TRAVIS_SECURE_ENV_VARS") == "true"
+  }
+  import autoImport._
 
   override def globalSettings: Seq[Def.Setting[_]] = List(
     organization := "com.geirsson",
@@ -34,7 +37,7 @@ object PublishPlugin extends AutoPlugin {
         s
       } else {
         println("Setting up gpg")
-        "git log HEAD~20..HEAD".!
+        "git log HEAD~2..HEAD".!
         (s"echo ${sys.env("PGP_SECRET")}" #| "base64 --decode" #| "gpg --import").!
         println("Publishing release")
         "+publishSigned" ::
@@ -46,9 +49,8 @@ object PublishPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Def.Setting[_]] = List(
     publishTo := Some {
-      if (version.in(ThisBuild).value.endsWith("-SNAPSHOT"))
-        Opts.resolver.sonatypeSnapshots
-      else Opts.resolver.sonatypeStaging
+      if (isTravisTag) Opts.resolver.sonatypeStaging
+      else Opts.resolver.sonatypeSnapshots
     }
   )
 
