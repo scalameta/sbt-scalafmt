@@ -10,6 +10,7 @@ inThisBuild(
     publishArtifact in packageSrc := sys.env.contains("CI")
   )
 )
+onLoadMessage := s"Welcome to sbt-scalafmt ${version.value}"
 
 lazy val plugin = project
   .settings(
@@ -17,8 +18,13 @@ lazy val plugin = project
     libraryDependencies ++= List(
       // depend on fatjar module with shaded dependencies to avoid classpath conflicts.
       "com.geirsson" %% "scalafmt-big" % {
-        if (isTravisTag) version.in(ThisBuild).value
-        else "1.6.0-RC3"
+        val buildVersion = version.in(ThisBuild).value
+        if (isTravisTag) {
+          println(s"Automatically picking scalafmt version ${buildVersion}")
+          buildVersion
+        } else {
+          "1.6.0-RC3"
+        }
       }
     ),
     sbtPlugin := true,
