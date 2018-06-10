@@ -1,3 +1,4 @@
+addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "1.6.0-RC1")
 addSbtPlugin("com.dwijnand" % "sbt-dynver" % "2.1.0")
 addSbtPlugin(
   "io.get-coursier" % "sbt-coursier" % coursier.util.Properties.version)

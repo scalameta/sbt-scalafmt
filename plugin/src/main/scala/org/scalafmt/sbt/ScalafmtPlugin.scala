@@ -1,16 +1,18 @@
 package org.scalafmt.sbt
 
-import org.scalafmt.config.{Config, ScalafmtConfig}
-import org.scalafmt.{Formatted, Scalafmt}
+import org.scalafmt.config.ScalafmtConfig
+import org.scalafmt.Formatted
+import org.scalafmt.Scalafmt
 import sbt.Keys._
-import sbt.{Def, _}
+import sbt.Def
+import sbt._
 import complete.DefaultParsers._
-import metaconfig.Configured
+import org.scalafmt.util.FormattingCache
+import org.scalafmt.util.StyleCache
 import sbt.util.Logger
-
-import scala.meta.internal.tokenizers.PlatformTokenizerCache
-import scala.util.{Failure, Success, Try}
-import org.scalafmt.util.{FormattingCache, StyleCache}
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 object ScalafmtPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
@@ -20,8 +22,6 @@ object ScalafmtPlugin extends AutoPlugin {
     val scalafmtCli: Command =
       Command.args("scalafmtCli", "run the scalafmt command line interface.") {
         case (s, args) =>
-          val lit = scala.meta.Lit.Int(1 )
-          pprint.log(lit.getClass)
           org.scalafmt.cli.Cli.exceptionThrowingMain(
             "--non-interactive" +: args.toArray
           )
@@ -55,11 +55,10 @@ object ScalafmtPlugin extends AutoPlugin {
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
 
   private val scalaConfig =
-    scalafmtConfig
-      .map(
-        _.flatMap(f => StyleCache.getStyleForFile(f.toString))
-          .getOrElse(ScalafmtConfig.default)
-      )
+    scalafmtConfig.map { c =>
+      c.flatMap(f => StyleCache.getStyleForFile(f.toString))
+        .getOrElse(ScalafmtConfig.default)
+    }
   private val sbtConfig = scalaConfig.map(_.forSbt)
 
   private def filterSource(source: File, config: ScalafmtConfig): Boolean =
@@ -83,26 +82,25 @@ object ScalafmtPlugin extends AutoPlugin {
   ): Seq[Option[T]] = {
     sources
       .withFilter(filterSource(_, config))
-      .map(
-        file => {
-          val input = IO.read(file)
-          val output = Scalafmt.format(input, config)
+      .map { file =>
+        val input = IO.read(file)
+        val output =
+          Scalafmt.format(input, config, Set.empty, file.getAbsolutePath)
 
-          output match {
-            case Formatted.Failure(e) =>
-              if (config.runner.fatalWarnings) {
-                throw e
-              } else if (config.runner.ignoreWarnings) {
-                // do nothing
-                None
-              } else {
-                Some(onError(file, e))
-              }
-            case Formatted.Success(code) =>
-              Some(onFormat(file, input, code))
-          }
+        output match {
+          case Formatted.Failure(e) =>
+            if (config.runner.fatalWarnings) {
+              throw e
+            } else if (config.runner.ignoreWarnings) {
+              // do nothing
+              None
+            } else {
+              Some(onError(file, e))
+            }
+          case Formatted.Success(code) =>
+            Some(onFormat(file, input, code))
         }
-      )
+      }
   }
 
   private def formatSources(
@@ -115,7 +113,7 @@ object ScalafmtPlugin extends AutoPlugin {
       config
     )(
       (file, e) => {
-        log.error(s"Error in ${file.toString}: $e")
+        log.err(e.toString)
         0
       },
       (file, input, output) => {
@@ -133,7 +131,6 @@ object ScalafmtPlugin extends AutoPlugin {
       log.info(s"Reformatted $cnt Scala sources")
     }
 
-    PlatformTokenizerCache.megaCache.clear()
   }
 
   private def checkSources(
@@ -143,7 +140,7 @@ object ScalafmtPlugin extends AutoPlugin {
   ): Boolean = {
     val res = withFormattedSources(sources, config)(
       (file, e) => {
-        log.error(s"Error in ${file.toString}: $e")
+        log.err(e.toString)
         false
       },
       (file, input, output) => {
@@ -156,23 +153,20 @@ object ScalafmtPlugin extends AutoPlugin {
         diff
       }
     ).flatten.forall(x => x)
-    PlatformTokenizerCache.megaCache.clear()
     res
   }
 
-  private lazy val sbtSources = thisProject.map(
-    proj => {
-      val rootSbt =
-        BuildPaths.configurationSources(proj.base).filterNot(_.isHidden)
-      val projectSbt =
-        (BuildPaths.projectStandard(proj.base) * GlobFilter("*.sbt")).get
-          .filterNot(_.isHidden)
-      rootSbt ++ projectSbt
-    }
-  )
-  private lazy val projectSources = thisProject.map(
-    proj => (BuildPaths.projectStandard(proj.base) * GlobFilter("*.scala")).get
-  )
+  private lazy val sbtSources = thisProject.map { proj =>
+    val rootSbt =
+      BuildPaths.configurationSources(proj.base).filterNot(_.isHidden)
+    val projectSbt =
+      (BuildPaths.projectStandard(proj.base) * GlobFilter("*.sbt")).get
+        .filterNot(_.isHidden)
+    rootSbt ++ projectSbt
+  }
+  private lazy val projectSources = thisProject.map { proj =>
+    (BuildPaths.projectStandard(proj.base) * GlobFilter("*.scala")).get
+  }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
     scalafmt := formatSources(
