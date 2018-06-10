@@ -20,7 +20,9 @@ lazy val plugin = project
       "com.geirsson" %% "scalafmt-big" % {
         val buildVersion = version.in(ThisBuild).value
         if (isTravisTag) {
-          println(s"Automatically picking scalafmt version ${buildVersion}")
+          println(
+            s"Automatically picking scalafmt version $buildVersion. TRAVIS_TAG=${System.getenv("TRAVIS_TAG")}"
+          )
           buildVersion
         } else {
           "1.6.0-RC3"
