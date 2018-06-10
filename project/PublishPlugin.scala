@@ -11,7 +11,7 @@ object PublishPlugin extends AutoPlugin {
 
   object autoImport {
     def isTravisTag: Boolean =
-      System.getenv("TRAVIS_TAG") != null
+      Option(System.getenv("TRAVIS_TAG")).exists(_.nonEmpty)
     def isTravisSecure: Boolean =
       System.getenv("TRAVIS_SECURE_ENV_VARS") == "true"
   }
