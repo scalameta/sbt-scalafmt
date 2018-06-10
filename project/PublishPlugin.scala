@@ -39,27 +39,24 @@ object PublishPlugin extends AutoPlugin {
     ),
     publishMavenStyle := true,
     commands += Command.command("ci-release") { s =>
-      val logger = streams.value.log
-      logger.info(
-        s"Running ci-release.\n" +
-          s"  TRAVIS_SECURE_ENV_VARS=${env("TRAVIS_SECURE_ENV_VARS")}\n" +
-          s"  TRAVIS_BRANCH=${env("TRAVIS_BRANCH")}\n" +
-          s"  TRAVIS_TAG=${env("TRAVIS_TAG")}"
-      )
-      "git log HEAD~2..HEAD".!
-
       if (!isTravisSecure) {
-        logger.info("No access to secret variables, doing nothing")
+        println("No access to secret variables, doing nothing")
         s
       } else {
-        logger.info("Setting up gpg")
+        println(
+          s"Running ci-release.\n" +
+            s"  TRAVIS_SECURE_ENV_VARS=${env("TRAVIS_SECURE_ENV_VARS")}\n" +
+            s"  TRAVIS_BRANCH=${env("TRAVIS_BRANCH")}\n" +
+            s"  TRAVIS_TAG=${env("TRAVIS_TAG")}"
+        )
+        println("Setting up gpg")
         (s"echo ${env("PGP_SECRET")}" #| "base64 --decode" #| "gpg --import").!
         if (!isTravisTag) {
-          logger.info(s"No tag push, publishing SNAPSHOT")
+          println(s"No tag push, publishing SNAPSHOT")
           "+publish" ::
             s
         } else {
-          logger.info("Tag push detected, publishing a stable release")
+          println("Tag push detected, publishing a stable release")
           "+publishSigned" ::
             "sonatypeReleaseAll" ::
             s
