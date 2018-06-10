@@ -11,8 +11,6 @@ object PublishPlugin extends AutoPlugin {
   object autoImport {
     def isTravisTag: Boolean =
       System.getProperty("TRAVIS_TAG") != null
-    def isTravisSecure: Boolean =
-      System.getProperty("TRAVIS_SECURE_ENV_VARS") == "true"
   }
   import autoImport._
 
@@ -32,14 +30,16 @@ object PublishPlugin extends AutoPlugin {
       )
     ),
     commands += Command.command("ci-release") { s =>
-      if (!isTravisSecure) {
-        println(s"Skipping publish, branch=${sys.env.get("TRAVIS_BRANCH")}")
-        s
+      println("Setting up gpg")
+      "git log HEAD~2..HEAD".!
+      (s"echo ${sys.env("PGP_SECRET")}" #| "base64 --decode" #| "gpg --import").!
+
+      if (!isTravisTag) {
+        println(s"No tag push, publishing a SNAPSHOT")
+        "+publish" ::
+          s
       } else {
-        println("Setting up gpg")
-        "git log HEAD~2..HEAD".!
-        (s"echo ${sys.env("PGP_SECRET")}" #| "base64 --decode" #| "gpg --import").!
-        println("Publishing release")
+        println("Tag pus detected, publishing a stable release")
         "+publishSigned" ::
           "sonatypeReleaseAll" ::
           s
