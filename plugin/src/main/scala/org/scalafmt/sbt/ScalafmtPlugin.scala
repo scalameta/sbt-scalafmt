@@ -59,7 +59,10 @@ object ScalafmtPlugin extends AutoPlugin {
       c.map { f =>
           StyleCache.getStyleForFileOrError(f.toString).toEither match {
             case Right(conf) => conf
-            case Left(configErr) => sys.error(configErr.msg)
+            case Left(configErr) =>
+              throw new MessageOnlyException(
+                configErr.msg
+              )
           }
         }
         .getOrElse(ScalafmtConfig.default)
