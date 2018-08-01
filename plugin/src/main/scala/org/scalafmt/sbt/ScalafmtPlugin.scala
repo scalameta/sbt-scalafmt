@@ -56,7 +56,15 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private val scalaConfig =
     scalafmtConfig.map { c =>
-      c.flatMap(f => StyleCache.getStyleForFile(f.toString))
+      c.map { f =>
+          StyleCache.getStyleForFileOrError(f.toString).toEither match {
+            case Right(conf) => conf
+            case Left(configErr) =>
+              throw new MessageOnlyException(
+                configErr.msg
+              )
+          }
+        }
         .getOrElse(ScalafmtConfig.default)
     }
   private val sbtConfig = scalaConfig.map(_.forSbt)
