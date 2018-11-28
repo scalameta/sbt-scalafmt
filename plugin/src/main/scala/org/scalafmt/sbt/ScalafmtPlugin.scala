@@ -158,7 +158,7 @@ object ScalafmtPlugin extends AutoPlugin {
             s"${file.toString} isn't formatted properly!"
           )
         }
-        diff
+        !diff
       }
     ).flatten.forall(x => x)
     res
