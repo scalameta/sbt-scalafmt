@@ -7,8 +7,10 @@ import sbt.Keys._
 import sbt.Def
 import sbt._
 import complete.DefaultParsers._
-import org.scalafmt.util.FormattingCache
 import org.scalafmt.util.StyleCache
+import sbt.util.CacheStoreFactory
+import sbt.util.FileInfo
+import sbt.util.FilesInfo
 import sbt.util.Logger
 import scala.util.Failure
 import scala.util.Success
@@ -19,6 +21,9 @@ object ScalafmtPlugin extends AutoPlugin {
 
   object autoImport {
     val scalafmt = taskKey[Unit]("Format Scala sources with scalafmt.")
+    val scalafmtIncremental = taskKey[Unit](
+      "Format Scala sources to be compiled incrementally with scalafmt."
+    )
     val scalafmtCli: Command =
       Command.args("scalafmtCli", "run the scalafmt command line interface.") {
         case (s, args) =>
@@ -112,14 +117,23 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def formatSources(
+      cacheDirectory: File,
       sources: Seq[File],
       config: ScalafmtConfig,
       log: Logger
   ): Unit = {
-    val cnt = withFormattedSources(
-      sources.filter(FormattingCache.outdatedFormatting),
-      config
-    )(
+    cached(cacheDirectory, FilesInfo.lastModified) { modified =>
+      log.info(s"Formatting ${modified.size} Scala sources...")
+      formatSources(modified.toSeq, config, log)
+    }(sources.toSet)
+  }
+
+  private def formatSources(
+      sources: Seq[File],
+      config: ScalafmtConfig,
+      log: Logger
+  ): Unit = {
+    val cnt = withFormattedSources(sources, config)(
       (file, e) => {
         log.err(e.toString)
         0
@@ -127,7 +141,6 @@ object ScalafmtPlugin extends AutoPlugin {
       (file, input, output) => {
         if (input != output) {
           IO.write(file, output)
-          FormattingCache.updateFormatting(file, System.currentTimeMillis())
           1
         } else {
           0
@@ -164,6 +177,21 @@ object ScalafmtPlugin extends AutoPlugin {
     res
   }
 
+  private def cached(cacheBaseDirectory: File, inStyle: FileInfo.Style)(
+      action: Set[File] => Unit
+  ): Set[File] => Unit = {
+    import Path._
+    lazy val inCache = Difference.inputs(
+      CacheStoreFactory(cacheBaseDirectory).make("in-cache"),
+      inStyle
+    )
+    inputs => {
+      inCache(inputs) { inReport =>
+        if (!inReport.modified.isEmpty) action(inReport.modified)
+      }
+    }
+  }
+
   private lazy val sbtSources = thisProject.map { proj =>
     val rootSbt =
       BuildPaths.configurationSources(proj.base).filterNot(_.isHidden)
@@ -178,6 +206,12 @@ object ScalafmtPlugin extends AutoPlugin {
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
     scalafmt := formatSources(
+      (unmanagedSources in scalafmt).value.filter(filterScala),
+      scalaConfig.value,
+      streams.value.log
+    ),
+    scalafmtIncremental := formatSources(
+      streams.value.cacheDirectory,
       (unmanagedSources in scalafmt).value.filter(filterScala),
       scalaConfig.value,
       streams.value.log
@@ -206,7 +240,7 @@ object ScalafmtPlugin extends AutoPlugin {
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
-        scalafmt in resolvedScoped.value.scope
+        scalafmtIncremental in resolvedScoped.value.scope
       } else {
         Def.task(())
       }
