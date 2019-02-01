@@ -58,7 +58,7 @@ object ScalafmtPlugin extends AutoPlugin {
         "(By default this means the Compile and Test configurations.)"
     )
     val scalafmtCheckAll = taskKey[Unit](
-      "Execute the scalafmtCheck task for all configurations in which it is enabled." +
+      "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
         "(By default this means the Compile and Test configurations.)"
     )
   }
