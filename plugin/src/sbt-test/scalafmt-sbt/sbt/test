@@ -28,6 +28,8 @@
 > p7/compile:scalafmtCheck
 > p7/test:scalafmtCheck
 
+> p9/scalafmtAll
+
 > p8/compile:scalafmt
 > check
 $ sleep 1000

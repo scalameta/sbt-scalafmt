@@ -34,8 +34,10 @@ lazy val p7 = project.settings(
   scalaVersion := "2.12.1",
   scalafmtConfig := None
 )
-
 lazy val p8 = project.settings(
+  scalaVersion := "2.12.1"
+)
+lazy val p9 = project.settings(
   scalaVersion := "2.12.1"
 )
 
@@ -185,6 +187,29 @@ TaskKey[Unit]("check") := {
       |    a: Int, // comment
       |    b: Double
       |  ) = ???
+      |}
+    """.stripMargin
+  )
+
+  assertContentsEqual(
+    file(s"p9/src/main/scala/Test.scala"),
+    """
+      |object Test {
+      |  foo(
+      |    a, // comment
+      |    b
+      |  )
+      |}
+    """.stripMargin
+  )
+  assertContentsEqual(
+    file(s"p9/src/test/scala/MainTest.scala"),
+    """
+      |object MainTest {
+      |  foo(
+      |    a, // comment
+      |    b
+      |  )
       |}
     """.stripMargin
   )

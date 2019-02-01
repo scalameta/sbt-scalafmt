@@ -53,6 +53,14 @@ object ScalafmtPlugin extends AutoPlugin {
           "Does not write to files."
       )
     val scalafmtOnly = inputKey[Unit]("Format a single given file.")
+    val scalafmtAll = taskKey[Unit](
+      "Execute the scalafmt task for all configurations in which it is enabled. " +
+        "(By default this means the Compile and Test configurations.)"
+    )
+    val scalafmtCheckAll = taskKey[Unit](
+      "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
+        "(By default this means the Compile and Test configurations.)"
+    )
   }
   import autoImport._
 
@@ -268,8 +276,15 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   )
 
+  private val anyConfigsInThisProject = ScopeFilter(
+    configurations = inAnyConfiguration
+  )
+
   override def projectSettings: Seq[Def.Setting[_]] =
-    Seq(Compile, Test).flatMap(inConfig(_)(scalafmtConfigSettings))
+    Seq(Compile, Test).flatMap(inConfig(_)(scalafmtConfigSettings)) ++ Seq(
+      scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).value,
+      scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value
+    )
 
   override def buildSettings: Seq[Def.Setting[_]] = Seq(
     scalafmtConfig := {
