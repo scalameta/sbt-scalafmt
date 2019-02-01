@@ -1,6 +1,6 @@
 inThisBuild(
   List(
-    organization := "com.geirsson",
+    organization := "org.scalameta",
     homepage := Some(url("https://github.com/scalameta/sbt-scalafmt")),
     licenses := Seq(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
@@ -14,31 +14,39 @@ inThisBuild(
       )
     ),
     resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers += Resolver.sonatypeRepo("snapshots"),
     scalaVersion := "2.12.6",
     publishArtifact in packageDoc := sys.env.contains("CI"),
     publishArtifact in packageSrc := sys.env.contains("CI")
   )
 )
+
 onLoadMessage := s"Welcome to sbt-scalafmt ${version.value}"
+
 skip in publish := true
 
 lazy val plugin = project
   .settings(
     moduleName := "sbt-scalafmt",
-    libraryDependencies ++= List(
-      // depend on fatjar module with shaded dependencies to avoid classpath conflicts.
-      "com.geirsson" %% "scalafmt-big" % {
-        val buildVersion = version.in(ThisBuild).value
+    libraryDependencies ++= {
+      val scalafmtVersion: String = {
         if (CiReleasePlugin.isTravisTag) {
+          val buildVersion = version.in(ThisBuild).value
+
           println(
             s"Automatically picking scalafmt version $buildVersion. TRAVIS_TAG=${System.getenv("TRAVIS_TAG")}"
           )
           buildVersion
         } else {
-          "1.6.0-RC4"
+          version.value
         }
       }
-    ),
+
+      List(
+        "org.scalameta" %% "scalafmt-core" % scalafmtVersion,
+        "org.scalameta" %% "scalafmt-cli" % scalafmtVersion
+      )
+    },
     sbtPlugin := true,
     scriptedBufferLog := false,
     scriptedLaunchOpts += s"-Dplugin.version=${version.value}"
