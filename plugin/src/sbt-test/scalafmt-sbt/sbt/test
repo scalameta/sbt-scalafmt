@@ -41,4 +41,16 @@ $ sleep 1000
 $ newer timestamp p8/src/main/scala/Test.scala
 $ newer p8/src/main/scala/Test2.scala timestamp
 
+# scalafmt fails if it failed to parse the code.
+-> p10/scalafmt
+-> p10/scalafmtCheck
+
+# scalafmt fails if .scalafmt.conf is invalid.
+-> p11/scalafmt
+-> p11/scalafmtCheck
+
+# scalafmt fails if version setting is missing.
+-> p12/scalafmt
+-> p12/scalafmtCheck
+
 > check
