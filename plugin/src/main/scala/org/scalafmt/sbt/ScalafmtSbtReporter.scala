@@ -7,7 +7,8 @@ import org.scalafmt.interfaces.ScalafmtReporter
 import sbt.internal.util.MessageOnlyException
 import sbt.util.Logger
 
-class ScalafmtSbtReporter(log: Logger, writer: PrintWriter) extends ScalafmtReporter {
+class ScalafmtSbtReporter(log: Logger, writer: PrintWriter)
+    extends ScalafmtReporter {
   override def error(file: Path, message: String): Unit = {
     throw new MessageOnlyException(s"$message: $file")
   }

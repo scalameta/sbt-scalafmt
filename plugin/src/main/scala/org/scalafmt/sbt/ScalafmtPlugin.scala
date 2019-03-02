@@ -85,7 +85,8 @@ object ScalafmtPlugin extends AutoPlugin {
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
     val reporter = new ScalafmtSbtReporter(log, writer)
-    val scalafmtInstance = Scalafmt.create(this.getClass.getClassLoader).withReporter(reporter)
+    val scalafmtInstance =
+      Scalafmt.create(this.getClass.getClassLoader).withReporter(reporter)
     sources
       .map { file =>
         val input = IO.read(file)
@@ -226,8 +227,18 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.text()
       ),
     scalafmtSbtCheck := {
-      checkSources(sbtSources.value, sbtConfig.value, streams.value.log, streams.value.text())
-      checkSources(projectSources.value, scalaConfig.value, streams.value.log, streams.value.text())
+      checkSources(
+        sbtSources.value,
+        sbtConfig.value,
+        streams.value.log,
+        streams.value.text()
+      )
+      checkSources(
+        projectSources.value,
+        scalaConfig.value,
+        streams.value.log,
+        streams.value.text()
+      )
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
@@ -251,7 +262,12 @@ object ScalafmtPlugin extends AutoPlugin {
       })
 
       // scalaConfig
-      formatSources(absFiles, scalaConfig.value, streams.value.log, streams.value.text())
+      formatSources(
+        absFiles,
+        scalaConfig.value,
+        streams.value.log,
+        streams.value.text()
+      )
     }
   )
 
@@ -273,6 +289,6 @@ object ScalafmtPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     Seq(
-      scalafmtOnCompile := false,
+      scalafmtOnCompile := false
     )
 }
