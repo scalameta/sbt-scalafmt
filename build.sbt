@@ -26,18 +26,7 @@ lazy val plugin = project
   .settings(
     moduleName := "sbt-scalafmt",
     libraryDependencies ++= List(
-      // depend on fatjar module with shaded dependencies to avoid classpath conflicts.
-      "com.geirsson" %% "scalafmt-big" % {
-        val buildVersion = version.in(ThisBuild).value
-        if (CiReleasePlugin.isTravisTag) {
-          println(
-            s"Automatically picking scalafmt version $buildVersion. TRAVIS_TAG=${System.getenv("TRAVIS_TAG")}"
-          )
-          buildVersion
-        } else {
-          "1.6.0-RC4"
-        }
-      }
+      "org.scalameta" %% "scalafmt-dynamic" % "2.0.0-RC5",
     ),
     sbtPlugin := true,
     scriptedBufferLog := false,

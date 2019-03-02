@@ -23,10 +23,11 @@
 > p6/compile:scalafmtCheck
 > p6/test:scalafmtCheck
 
-> p7/compile:scalafmt
-> p7/test:scalafmt
-> p7/compile:scalafmtCheck
-> p7/test:scalafmtCheck
+# expect failure because of missing .scalafmt.conf
+-> p7/compile:scalafmt
+-> p7/test:scalafmt
+-> p7/compile:scalafmtCheck
+-> p7/test:scalafmtCheck
 
 > p9/scalafmtAll
 
