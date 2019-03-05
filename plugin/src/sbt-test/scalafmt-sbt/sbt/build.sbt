@@ -28,17 +28,28 @@ lazy val p5 = project.settings(
 )
 lazy val p6 = project.settings(
   scalaVersion := "2.12.1",
-  scalafmtConfig := Some(file(".scalafmt6.conf"))
+  scalafmtConfig := file(".scalafmt6.conf")
 )
 lazy val p7 = project.settings(
   scalaVersion := "2.12.1",
-  scalafmtConfig := None
+  scalafmtConfig := file(".scalafmt_does_not_exist.conf")
 )
 lazy val p8 = project.settings(
   scalaVersion := "2.12.1"
 )
 lazy val p9 = project.settings(
   scalaVersion := "2.12.1"
+)
+lazy val p10 = project.settings(
+  scalaVersion := "2.12.1"
+)
+lazy val p11 = project.settings(
+  scalaVersion := "2.12.1",
+  scalafmtConfig := file(".scalafmt11.conf")
+)
+lazy val p12 = project.settings(
+  scalaVersion := "2.12.1",
+  scalafmtConfig := file(".scalafmt12.conf")
 )
 
 def assertContentsEqual(file: File, expected: String): Unit = {
@@ -147,22 +158,22 @@ TaskKey[Unit]("check") := {
   assertContentsEqual(
     file(s"p7/src/main/scala/Test.scala"),
     """
-      |object Test {
-      |  foo(
-      |    a, // comment
-      |    b
-      |  )
+      |object
+      |Test
+      |{
+      |  foo(a, // comment
+      |    b)
       |}
     """.stripMargin
   )
   assertContentsEqual(
     file(s"p7/src/test/scala/MainTest.scala"),
     """
-      |object MainTest {
-      |  foo(
-      |    a, // comment
-      |    b
-      |  )
+      |object
+      |MainTest
+      |{
+      |  foo(a, // comment
+      |    b)
       |}
     """.stripMargin
   )

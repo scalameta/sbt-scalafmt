@@ -23,10 +23,11 @@
 > p6/compile:scalafmtCheck
 > p6/test:scalafmtCheck
 
-> p7/compile:scalafmt
-> p7/test:scalafmt
-> p7/compile:scalafmtCheck
-> p7/test:scalafmtCheck
+# expect failure because of missing .scalafmt.conf
+-> p7/compile:scalafmt
+-> p7/test:scalafmt
+-> p7/compile:scalafmtCheck
+-> p7/test:scalafmtCheck
 
 > p9/scalafmtAll
 
@@ -39,5 +40,17 @@ $ sleep 1000
 > p8/compile:scalafmt
 $ newer timestamp p8/src/main/scala/Test.scala
 $ newer p8/src/main/scala/Test2.scala timestamp
+
+# scalafmt fails if it failed to parse the code.
+-> p10/scalafmt
+-> p10/scalafmtCheck
+
+# scalafmt fails if .scalafmt.conf is invalid.
+-> p11/scalafmt
+-> p11/scalafmtCheck
+
+# scalafmt fails if version setting is missing.
+-> p12/scalafmt
+-> p12/scalafmtCheck
 
 > check
