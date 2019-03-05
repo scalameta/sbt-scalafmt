@@ -229,7 +229,7 @@ TaskKey[Unit]("check") := {
     file("project/plugins.sbt"),
     """
       |addSbtPlugin(
-      |  "com.geirsson" % "sbt-scalafmt" % System.getProperty("plugin.version")
+      |  "org.scalameta" % "sbt-scalafmt" % System.getProperty("plugin.version")
       |)
       |resolvers += Resolver.sonatypeRepo("releases")
     """.stripMargin

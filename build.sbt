@@ -1,6 +1,6 @@
 inThisBuild(
   List(
-    organization := "com.geirsson",
+    organization := "org.scalameta",
     homepage := Some(url("https://github.com/scalameta/sbt-scalafmt")),
     licenses := Seq(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
