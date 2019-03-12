@@ -108,8 +108,11 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: PrintWriter
   ): Unit = {
     cached(cacheDirectory, FilesInfo.lastModified) { modified =>
-      log.info(s"Formatting ${modified.size} Scala sources...")
-      formatSources(modified.toSeq, config, log, writer)
+      val changed = modified.filter(_.exists)
+      if (changed.size > 0) {
+        log.info(s"Formatting ${changed.size} Scala sources...")
+        formatSources(changed.toSeq, config, log, writer)
+      }
     }(sources.toSet).getOrElse(())
   }
 
@@ -148,8 +151,13 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: PrintWriter
   ): Boolean = {
     cached[Boolean](cacheDirectory, FilesInfo.lastModified) { modified =>
-      log.info(s"Checking ${modified.size} Scala sources...")
-      checkSources(modified.toSeq, config, log, writer)
+      val changed = modified.filter(_.exists)
+      if (changed.size > 0) {
+        log.info(s"Formatting ${changed.size} Scala sources...")
+        checkSources(changed.toSeq, config, log, writer)
+      } else {
+        true
+      }
     }(sources.toSet).getOrElse(true)
   }
 
