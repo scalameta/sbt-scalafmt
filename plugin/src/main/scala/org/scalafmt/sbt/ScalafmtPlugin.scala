@@ -153,7 +153,7 @@ object ScalafmtPlugin extends AutoPlugin {
     cached[Boolean](cacheDirectory, FilesInfo.lastModified) { modified =>
       val changed = modified.filter(_.exists)
       if (changed.size > 0) {
-        log.info(s"Formatting ${changed.size} Scala sources...")
+        log.info(s"Checking ${changed.size} Scala sources...")
         checkSources(changed.toSeq, config, log, writer)
       } else {
         true
@@ -175,9 +175,7 @@ object ScalafmtPlugin extends AutoPlugin {
       (file, input, output) => {
         val diff = input != output
         if (diff) {
-          throw new MessageOnlyException(
-            s"${file.toString} isn't formatted properly!"
-          )
+          log.warn(s"${file.toString} isn't formatted properly!")
         }
         !diff
       }
