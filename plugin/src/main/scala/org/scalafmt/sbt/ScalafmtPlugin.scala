@@ -167,7 +167,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Boolean = {
-    val res = withFormattedSources(sources, config, log, writer)(
+    val unformattedCount = withFormattedSources(sources, config, log, writer)(
       (file, e) => {
         log.err(e.toString)
         false
@@ -179,8 +179,13 @@ object ScalafmtPlugin extends AutoPlugin {
         }
         !diff
       }
-    ).flatten.forall(x => x)
-    res
+    ).flatten.count(x => !x)
+    if (unformattedCount > 0) {
+      throw new MessageOnlyException(
+        s"${unformattedCount} files must be formatted"
+      )
+    }
+    unformattedCount == 0
   }
 
   private def cached[T](cacheBaseDirectory: File, inStyle: FileInfo.Style)(
