@@ -113,7 +113,7 @@ object ScalafmtPlugin extends AutoPlugin {
         log.info(s"Formatting ${changed.size} Scala sources...")
         formatSources(changed.toSeq, config, log, writer)
       }
-    }(sources.toSet)
+    }(sources.toSet).getOrElse(())
   }
 
   private def formatSources(
@@ -144,6 +144,24 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def checkSources(
+      cacheDirectory: File,
+      sources: Seq[File],
+      config: Path,
+      log: Logger,
+      writer: PrintWriter
+  ): Boolean = {
+    cached[Boolean](cacheDirectory, FilesInfo.lastModified) { modified =>
+      val changed = modified.filter(_.exists)
+      if (changed.size > 0) {
+        log.info(s"Formatting ${changed.size} Scala sources...")
+        checkSources(changed.toSeq, config, log, writer)
+      } else {
+        true
+      }
+    }(sources.toSet).getOrElse(true)
+  }
+
+  private def checkSources(
       sources: Seq[File],
       config: Path,
       log: Logger,
@@ -167,9 +185,9 @@ object ScalafmtPlugin extends AutoPlugin {
     res
   }
 
-  private def cached(cacheBaseDirectory: File, inStyle: FileInfo.Style)(
-      action: Set[File] => Unit
-  ): Set[File] => Unit = {
+  private def cached[T](cacheBaseDirectory: File, inStyle: FileInfo.Style)(
+      action: Set[File] => T
+  ): Set[File] => Option[T] = {
     import Path._
     lazy val inCache = Difference.inputs(
       CacheStoreFactory(cacheBaseDirectory).make("in-cache"),
@@ -177,7 +195,8 @@ object ScalafmtPlugin extends AutoPlugin {
     )
     inputs => {
       inCache(inputs) { inReport =>
-        if (!inReport.modified.isEmpty) action(inReport.modified)
+        if (!inReport.modified.isEmpty) Some(action(inReport.modified))
+        else None
       }
     }
   }
@@ -196,12 +215,6 @@ object ScalafmtPlugin extends AutoPlugin {
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
     scalafmt := formatSources(
-      (unmanagedSources in scalafmt).value,
-      scalaConfig.value,
-      streams.value.log,
-      streams.value.text()
-    ),
-    scalafmtIncremental := formatSources(
       streams.value.cacheDirectory,
       (unmanagedSources in scalafmt).value,
       scalaConfig.value,
@@ -224,6 +237,7 @@ object ScalafmtPlugin extends AutoPlugin {
     },
     scalafmtCheck :=
       checkSources(
+        streams.value.cacheDirectory,
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
@@ -245,7 +259,7 @@ object ScalafmtPlugin extends AutoPlugin {
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
-        scalafmtIncremental in resolvedScoped.value.scope
+        scalafmt in resolvedScoped.value.scope
       } else {
         Def.task(())
       }
