@@ -24,7 +24,7 @@ object ScalafmtPlugin extends AutoPlugin {
   object autoImport {
     val scalafmt = taskKey[Unit]("Format Scala sources with scalafmt.")
     val scalafmtIncremental = taskKey[Unit](
-      "Format Scala sources to be compiled incrementally with scalafmt."
+      "Format Scala sources to be compiled incrementally with scalafmt (alias to scalafmt)."
     )
     val scalafmtCheck =
       taskKey[Boolean](
@@ -222,6 +222,7 @@ object ScalafmtPlugin extends AutoPlugin {
       streams.value.log,
       streams.value.text()
     ),
+    scalafmtIncremental := scalafmt.value,
     scalafmtSbt := {
       formatSources(
         sbtSources.value,
