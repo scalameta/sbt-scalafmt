@@ -7,10 +7,22 @@ inThisBuild(
     ),
     developers := List(
       Developer(
+        "poslegm",
+        "Mikhail Chugunkov",
+        "poslegm@gmail.com",
+        url("https://chugunkov.website/")
+      ),
+      Developer(
         "olafurpg",
         "Ólafur Páll Geirsson",
         "olafurpg@gmail.com",
         url("https://geirsson.com")
+      ),
+      Developer(
+        "tanishiking",
+        "Rikito Taniguchi",
+        "rikiriki1238@gmail.com",
+        url("https://github.com/tanishiking/")
       )
     ),
     resolvers += Resolver.sonatypeRepo("releases"),
