@@ -75,6 +75,8 @@ object ScalafmtPlugin extends AutoPlugin {
   private type Input = String
   private type Output = String
 
+  val globalInstance = Scalafmt.create(this.getClass.getClassLoader)
+
   private def withFormattedSources[T](
       sources: Seq[File],
       config: Path,
@@ -85,8 +87,7 @@ object ScalafmtPlugin extends AutoPlugin {
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
     val reporter = new ScalafmtSbtReporter(log, writer)
-    val scalafmtInstance =
-      Scalafmt.create(this.getClass.getClassLoader).withReporter(reporter)
+    val scalafmtInstance = globalInstance.withReporter(reporter)
     sources
       .map { file =>
         val input = IO.read(file)
