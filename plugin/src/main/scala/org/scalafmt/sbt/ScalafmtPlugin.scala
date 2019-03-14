@@ -154,7 +154,7 @@ object ScalafmtPlugin extends AutoPlugin {
     cached[Boolean](cacheDirectory, FilesInfo.lastModified) { modified =>
       val changed = modified.filter(_.exists)
       if (changed.size > 0) {
-        log.info(s"Formatting ${changed.size} Scala sources...")
+        log.info(s"Checking ${changed.size} Scala sources...")
         checkSources(changed.toSeq, config, log, writer)
       } else {
         true
@@ -168,7 +168,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Boolean = {
-    val res = withFormattedSources(sources, config, log, writer)(
+    val unformattedCount = withFormattedSources(sources, config, log, writer)(
       (file, e) => {
         log.err(e.toString)
         false
@@ -176,14 +176,17 @@ object ScalafmtPlugin extends AutoPlugin {
       (file, input, output) => {
         val diff = input != output
         if (diff) {
-          throw new MessageOnlyException(
-            s"${file.toString} isn't formatted properly!"
-          )
+          log.warn(s"${file.toString} isn't formatted properly!")
         }
         !diff
       }
-    ).flatten.forall(x => x)
-    res
+    ).flatten.count(x => !x)
+    if (unformattedCount > 0) {
+      throw new MessageOnlyException(
+        s"${unformattedCount} files must be formatted"
+      )
+    }
+    unformattedCount == 0
   }
 
   private def cached[T](cacheBaseDirectory: File, inStyle: FileInfo.Style)(
