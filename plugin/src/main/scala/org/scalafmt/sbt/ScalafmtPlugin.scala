@@ -23,6 +23,8 @@ object ScalafmtPlugin extends AutoPlugin {
 
   object autoImport {
     val scalafmt = taskKey[Unit]("Format Scala sources with scalafmt.")
+
+    @deprecated("Use scalafmt instead.", "2.0.0")
     val scalafmtIncremental = taskKey[Unit](
       "Format Scala sources to be compiled incrementally with scalafmt (alias to scalafmt)."
     )
