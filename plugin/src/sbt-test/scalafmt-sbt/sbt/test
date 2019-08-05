@@ -60,6 +60,7 @@ $ newer p8/src/main/scala/Test2.scala timestamp
 $ exec chmod 000 p13/src/main/scala/Test.scala
 # cache hit expected, this will fail if the formatter is actually invoked
 > p13/scalafmt
+> p13/scalafmtCheck
 # ensure cache invalidation works
 $ touch p13/src/main/scala/Test.scala
 -> p13/scalafmt
@@ -69,6 +70,7 @@ $ touch p13/src/main/scala/Test.scala
 $ exec chmod 000 p14/src/main/scala/Test.scala
 # cache hit expected, this will fail if the formatter is actually invoked
 > p14/scalafmtCheck
+> p14/scalafmt
 # ensure cache invalidation works
 $ touch p14/src/main/scala/Test.scala
 -> p14/scalafmtCheck

@@ -243,7 +243,7 @@ object ScalafmtPlugin extends AutoPlugin {
     },
     scalafmtCheck :=
       checkSources(
-        streams.value.cacheDirectory,
+        (streams in scalafmt).value.cacheDirectory,
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
