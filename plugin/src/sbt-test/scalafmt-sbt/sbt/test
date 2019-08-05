@@ -54,3 +54,21 @@ $ newer p8/src/main/scala/Test2.scala timestamp
 -> p12/scalafmtCheck
 
 > check
+
+> p13/scalafmt
+# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+$ exec chmod 000 p13/src/main/scala/Test.scala
+# cache hit expected, this will fail if the formatter is actually invoked
+> p13/scalafmt
+# ensure cache invalidation works
+$ touch p13/src/main/scala/Test.scala
+-> p13/scalafmt
+
+> p14/scalafmtCheck
+# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+$ exec chmod 000 p14/src/main/scala/Test.scala
+# cache hit expected, this will fail if the formatter is actually invoked
+> p14/scalafmtCheck
+# ensure cache invalidation works
+$ touch p14/src/main/scala/Test.scala
+-> p14/scalafmtCheck

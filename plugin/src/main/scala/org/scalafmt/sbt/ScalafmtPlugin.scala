@@ -191,17 +191,16 @@ object ScalafmtPlugin extends AutoPlugin {
     unformattedCount == 0
   }
 
-  private def cached[T](cacheBaseDirectory: File, inStyle: FileInfo.Style)(
+  private def cached[T](cacheBaseDirectory: File, outStyle: FileInfo.Style)(
       action: Set[File] => T
   ): Set[File] => Option[T] = {
-    import Path._
-    lazy val inCache = Difference.inputs(
-      CacheStoreFactory(cacheBaseDirectory).make("in-cache"),
-      inStyle
+    lazy val outCache = Difference.outputs(
+      CacheStoreFactory(cacheBaseDirectory).make("out-cache"),
+      outStyle
     )
     inputs => {
-      inCache(inputs) { inReport =>
-        if (!inReport.modified.isEmpty) Some(action(inReport.modified))
+      outCache(inputs) { outReport =>
+        if (!outReport.modified.isEmpty) Some(action(outReport.modified))
         else None
       }
     }
