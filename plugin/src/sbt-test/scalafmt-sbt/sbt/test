@@ -74,3 +74,19 @@ $ exec chmod 000 p14/src/main/scala/Test.scala
 # ensure cache invalidation works
 $ touch p14/src/main/scala/Test.scala
 -> p14/scalafmtCheck
+
+> p15/scalafmt
+> p15/scalafmtCheck
+$ copy-file .scalafmt.conf .scalafmt15.conf
+# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+$ exec chmod 000 p15/src/main/scala/Test.scala
+-> p15/scalafmt
+-> p15/scalafmtCheck
+
+> p16/scalafmt
+> p16/scalafmtCheck
+> set p16/scalafmtConfig := file(".scalafmt.conf")
+# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+$ exec chmod 000 p16/src/main/scala/Test.scala
+-> p16/scalafmt
+-> p16/scalafmtCheck

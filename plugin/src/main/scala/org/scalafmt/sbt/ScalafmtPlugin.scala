@@ -11,7 +11,6 @@ import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
 import sbt.util.FilesInfo
 import sbt.util.Logger
-import sbt.LoggerWriter
 
 import scala.util.Failure
 import scala.util.Success
@@ -110,7 +109,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    cached(cacheDirectory, FilesInfo.lastModified) { modified =>
+    cached(cacheDirectory, FilesInfo.lastModified, config) { modified =>
       val changed = modified.filter(_.exists)
       if (changed.size > 0) {
         log.info(s"Formatting ${changed.size} Scala sources...")
@@ -153,7 +152,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Boolean = {
-    cached[Boolean](cacheDirectory, FilesInfo.lastModified) { modified =>
+    cached(cacheDirectory, FilesInfo.lastModified, config) { modified =>
       val changed = modified.filter(_.exists)
       if (changed.size > 0) {
         log.info(s"Checking ${changed.size} Scala sources...")
@@ -191,7 +190,11 @@ object ScalafmtPlugin extends AutoPlugin {
     unformattedCount == 0
   }
 
-  private def cached[T](cacheBaseDirectory: File, outStyle: FileInfo.Style)(
+  private def cached[T](
+      cacheBaseDirectory: File,
+      outStyle: FileInfo.Style,
+      config: Path
+  )(
       action: Set[File] => T
   ): Set[File] => Option[T] = {
     lazy val outCache = Difference.outputs(
@@ -199,9 +202,19 @@ object ScalafmtPlugin extends AutoPlugin {
       outStyle
     )
     inputs => {
-      outCache(inputs) { outReport =>
-        if (!outReport.modified.isEmpty) Some(action(outReport.modified))
-        else None
+      outCache(inputs + config.toFile) { outReport =>
+        if (!outReport.modified.isEmpty) {
+          val invalidatedInputs = inputs -- outReport.unmodified
+          if (!invalidatedInputs.isEmpty) {
+            // incremental run
+            Some(action(invalidatedInputs))
+          } else {
+            // config file must have changed, rerun everything
+            Some(action(inputs))
+          }
+        } else {
+          None
+        }
       }
     }
   }

@@ -59,6 +59,14 @@ lazy val p14 = project.settings(
   scalaVersion := "2.12.1",
   scalafmtConfig := file(".scalafmt14.conf")
 )
+lazy val p15 = project.settings(
+  scalaVersion := "2.12.1",
+  scalafmtConfig := file(".scalafmt15.conf")
+)
+lazy val p16 = project.settings(
+  scalaVersion := "2.12.1",
+  scalafmtConfig := file(".scalafmt16.conf")
+)
 
 def assertContentsEqual(file: File, expected: String): Unit = {
   val obtained =
