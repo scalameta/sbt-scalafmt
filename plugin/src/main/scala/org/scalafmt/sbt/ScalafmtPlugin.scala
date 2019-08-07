@@ -11,7 +11,6 @@ import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
 import sbt.util.FilesInfo
 import sbt.util.Logger
-import sbt.LoggerWriter
 
 import scala.util.Failure
 import scala.util.Success
@@ -110,8 +109,8 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    cached(cacheDirectory, FilesInfo.lastModified) { modified =>
-      val changed = modified.filter(_.exists)
+    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
+      val changed = cacheMisses.filter(_.exists)
       if (changed.size > 0) {
         log.info(s"Formatting ${changed.size} Scala sources...")
         formatSources(changed.toSeq, config, log, writer)
@@ -153,8 +152,8 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Boolean = {
-    cached[Boolean](cacheDirectory, FilesInfo.lastModified) { modified =>
-      val changed = modified.filter(_.exists)
+    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
+      val changed = cacheMisses.filter(_.exists)
       if (changed.size > 0) {
         log.info(s"Checking ${changed.size} Scala sources...")
         checkSources(changed.toSeq, config, log, writer)
@@ -191,18 +190,32 @@ object ScalafmtPlugin extends AutoPlugin {
     unformattedCount == 0
   }
 
-  private def cached[T](cacheBaseDirectory: File, inStyle: FileInfo.Style)(
+  private def cached[T](
+      cacheBaseDirectory: File,
+      outStyle: FileInfo.Style,
+      config: Path
+  )(
       action: Set[File] => T
   ): Set[File] => Option[T] = {
-    import Path._
-    lazy val inCache = Difference.inputs(
-      CacheStoreFactory(cacheBaseDirectory).make("in-cache"),
-      inStyle
+    lazy val outCache = Difference.outputs(
+      CacheStoreFactory(cacheBaseDirectory).make("out-cache"),
+      outStyle
     )
     inputs => {
-      inCache(inputs) { inReport =>
-        if (!inReport.modified.isEmpty) Some(action(inReport.modified))
-        else None
+      outCache(inputs + config.toFile) { outReport =>
+        val updatedOrAdded = outReport.modified -- outReport.removed
+        if (!updatedOrAdded.isEmpty) {
+          val cacheMisses = updatedOrAdded.intersect(inputs)
+          if (!cacheMisses.isEmpty) {
+            // incremental run
+            Some(action(cacheMisses))
+          } else {
+            // config file must have changed, rerun everything
+            Some(action(inputs))
+          }
+        } else {
+          None
+        }
       }
     }
   }
@@ -244,7 +257,7 @@ object ScalafmtPlugin extends AutoPlugin {
     },
     scalafmtCheck :=
       checkSources(
-        streams.value.cacheDirectory,
+        (streams in scalafmt).value.cacheDirectory,
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
