@@ -58,20 +58,37 @@ $ newer p8/src/main/scala/Test2.scala timestamp
 > p13/scalafmt
 # prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
 $ exec chmod 000 p13/src/main/scala/Test.scala
-# cache hit expected, this will fail if the formatter is actually invoked
+######## no-op expected when nothing has changed
 > p13/scalafmt
 > p13/scalafmtCheck
-# ensure cache invalidation works
+######## no-op expected expected when no file was added nor updated
+$ delete p13/src/main/scala/Test2.scala
+> p13/scalafmt
+> p13/scalafmtCheck
+######## incremental formatting expected when a file was added
+$ copy-file p13/src/test/scala/Test3.scala p13/src/main/scala/Test3.scala
+> p13/scalafmt
+> p13/scalafmtCheck
+-$ must-mirror p13/src/test/scala/Test3.scala p13/src/main/scala/Test3.scala
+######## cache invalidation expected when a file was updated
 $ touch p13/src/main/scala/Test.scala
 -> p13/scalafmt
 
 > p14/scalafmtCheck
 # prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
 $ exec chmod 000 p14/src/main/scala/Test.scala
-# cache hit expected, this will fail if the formatter is actually invoked
+######## no-op expected when nothing has changed
 > p14/scalafmtCheck
 > p14/scalafmt
-# ensure cache invalidation works
+######## no-op expected expected when no file was added nor updated
+$ delete p14/src/main/scala/Test2.scala
+> p14/scalafmtCheck
+> p14/scalafmt
+######## incremental checking expected when a file was added
+$ copy-file p14/src/test/scala/Test3.scala p14/src/main/scala/Test3.scala
+> p14/scalafmtCheck
+> p14/scalafmt
+######## cache invalidation expected when a file was updated
 $ touch p14/src/main/scala/Test.scala
 -> p14/scalafmtCheck
 

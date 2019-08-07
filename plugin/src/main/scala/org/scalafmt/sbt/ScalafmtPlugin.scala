@@ -109,8 +109,8 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { modified =>
-      val changed = modified.filter(_.exists)
+    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
+      val changed = cacheMisses.filter(_.exists)
       if (changed.size > 0) {
         log.info(s"Formatting ${changed.size} Scala sources...")
         formatSources(changed.toSeq, config, log, writer)
@@ -152,8 +152,8 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Boolean = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { modified =>
-      val changed = modified.filter(_.exists)
+    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
+      val changed = cacheMisses.filter(_.exists)
       if (changed.size > 0) {
         log.info(s"Checking ${changed.size} Scala sources...")
         checkSources(changed.toSeq, config, log, writer)
@@ -203,11 +203,12 @@ object ScalafmtPlugin extends AutoPlugin {
     )
     inputs => {
       outCache(inputs + config.toFile) { outReport =>
-        if (!outReport.modified.isEmpty) {
-          val invalidatedInputs = inputs -- outReport.unmodified
-          if (!invalidatedInputs.isEmpty) {
+        val updatedOrAdded = outReport.modified -- outReport.removed
+        if (!updatedOrAdded.isEmpty) {
+          val cacheMisses = updatedOrAdded.intersect(inputs)
+          if (!cacheMisses.isEmpty) {
             // incremental run
-            Some(action(invalidatedInputs))
+            Some(action(cacheMisses))
           } else {
             // config file must have changed, rerun everything
             Some(action(inputs))
