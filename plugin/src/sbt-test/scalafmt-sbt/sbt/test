@@ -107,3 +107,13 @@ $ exec chmod 000 p15/src/main/scala/Test.scala
 $ exec chmod 000 p16/src/main/scala/Test.scala
 -> p16/scalafmt
 -> p16/scalafmtCheck
+
+$ copy-file p17/src/test/scala/Test2.scala p17/src/main/scala/Test2.scala
+-> p17/scalafmtCheck
+# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+$ exec chmod 000 p17/src/main/scala/Test.scala
+######## incremental checking expected when all previous validations failed on some sources only
+> p17/test:scalafmt
+$ copy-file p17/src/test/scala/Test2.scala p17/src/main/scala/Test2.scala
+> p17/scalafmtCheck
+> p17/scalafmt

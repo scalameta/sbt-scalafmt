@@ -15,6 +15,8 @@ import sbt.util.Logger
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+import scala.util.control.ControlThrowable
+
 import org.scalafmt.interfaces.Scalafmt
 
 object ScalafmtPlugin extends AutoPlugin {
@@ -152,15 +154,24 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
-      val changed = cacheMisses.filter(_.exists)
-      if (changed.size > 0) {
-        log.info(
-          s"Checking ${withMaybePlural(changed.size, "Scala source")}..."
-        )
-        checkSources(changed.toSeq, config, log, writer)
-      }
-    }(sources.toSet)
+    val unformattedFiles =
+      cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
+        val changed = cacheMisses.filter(_.exists)
+        if (changed.size > 0) {
+          log.info(
+            s"Checking ${withMaybePlural(changed.size, "Scala source")}..."
+          )
+          checkSources(changed.toSeq, config, log, writer)
+        } else {
+          Set.empty
+        }
+      }(sources.toSet)
+
+    if (!unformattedFiles.isEmpty) {
+      throw new MessageOnlyException(
+        s"${withMaybePlural(unformattedFiles.size, "file")} must be formatted"
+      )
+    }
   }
 
   private def checkSources(
@@ -168,8 +179,8 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Unit = {
-    val unformattedFiles = withFormattedSources(sources, config, log, writer)(
+  ): Set[File] = {
+    withFormattedSources(sources, config, log, writer)(
       (file, input, output) => {
         val diff = input != output
         if (diff) {
@@ -180,40 +191,56 @@ object ScalafmtPlugin extends AutoPlugin {
         }
       }
     ).flatten
-
-    if (!unformattedFiles.isEmpty) {
-      throw new MessageOnlyException(
-        s"${withMaybePlural(unformattedFiles.size, "file")} must be formatted"
-      )
-    }
   }
+
+  private case class UncacheableFilesException(files: Set[File])
+      extends ControlThrowable
 
   private def cached(
       cacheBaseDirectory: File,
       outStyle: FileInfo.Style,
       config: Path
   )(
-      action: Set[File] => Unit
-  ): Set[File] => Unit = {
+      action: Set[File] => Set[File]
+  ): Set[File] => Set[File] = {
     lazy val outCache = Difference.outputs(
       CacheStoreFactory(cacheBaseDirectory).make("out-cache"),
       outStyle
     )
-    inputs => {
-      outCache(inputs + config.toFile) { outReport =>
-        val updatedOrAdded = outReport.modified -- outReport.removed
-        if (!updatedOrAdded.isEmpty) {
-          val cacheMisses = updatedOrAdded.intersect(inputs)
-          if (!cacheMisses.isEmpty) {
-            // incremental run
-            action(cacheMisses)
+    inputs =>
+      val cacheLookupFiles = inputs + config.toFile
+      try {
+        outCache(cacheLookupFiles) { outReport =>
+          val updatedOrAdded = outReport.modified -- outReport.removed
+          if (!updatedOrAdded.isEmpty) {
+            val cacheMisses = updatedOrAdded.intersect(inputs)
+
+            val uncacheableFiles =
+              if (!cacheMisses.isEmpty) {
+                // partial cache hit, incremental run
+                action(cacheMisses)
+              } else {
+                // config file must have changed, rerun everything
+                action(inputs)
+              }
+
+            if (!uncacheableFiles.isEmpty) {
+              // prevent regular behavior of caching files passed as input
+              throw UncacheableFilesException(uncacheableFiles)
+            }
+            uncacheableFiles
           } else {
-            // config file must have changed, rerun everything
-            action(inputs)
+            // cache hit
+            Set.empty
           }
         }
+      } catch {
+        case UncacheableFilesException(uncacheableFiles) =>
+          // cache what we can for the next run to be incremental
+          val cacheableFiles = cacheLookupFiles -- uncacheableFiles
+          outCache(_ => cacheableFiles)
+          uncacheableFiles
       }
-    }
   }
 
   private lazy val sbtSources = thisProject.map { proj =>
