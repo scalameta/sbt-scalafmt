@@ -23,23 +23,30 @@ class Difference(
     store.read(default = FilesInfo.empty[style.F])(style.formats).files
   private def raw(fs: Set[style.F]): Set[File] = fs.map(_.file)
 
-  def apply[T](files: Set[File])(f: ChangeReport[File] => T): T = {
+  private def always[B](result: B): PartialFunction[Any, B] = {
+    case _ => result
+  }
+
+  def apply[T](files: Set[File])(
+      f: ChangeReport[File] => T,
+      toCache: PartialFunction[T, Set[File]] = always(files)
+  ): T = {
     val lastFilesInfo = cachedFilesInfo
-    apply(files, lastFilesInfo)(f)(_ => files)
+    apply(files, lastFilesInfo)(f)(toCache)
   }
 
   def apply[T](
       f: ChangeReport[File] => T
-  )(implicit toFiles: T => Set[File]): T = {
+  )(implicit @deprecatedName('toFiles) toCache: T => Set[File]): T = {
     val lastFilesInfo = cachedFilesInfo
-    apply(raw(lastFilesInfo), lastFilesInfo)(f)(toFiles)
+    apply(raw(lastFilesInfo), lastFilesInfo)(f) { case x => toCache(x) }
   }
 
   private def abs(files: Set[File]) = files.map(_.getAbsoluteFile)
 
   private[this] def apply[T](files: Set[File], lastFilesInfo: Set[style.F])(
       f: ChangeReport[File] => T
-  )(extractFiles: T => Set[File]): T = {
+  )(toCache: PartialFunction[T, Set[File]]): T = {
     val lastFiles = raw(lastFilesInfo)
     val currentFiles = abs(files)
     val currentFilesInfo = style(currentFiles)
@@ -53,11 +60,11 @@ class Difference(
     }
 
     val result = f(report)
-    val info =
-      if (filesAreOutputs) style(abs(extractFiles(result)))
-      else currentFilesInfo
+    val maybeInfo =
+      if (filesAreOutputs) toCache.lift(result).map(f => style(abs(f)))
+      else Some(currentFilesInfo)
 
-    store.write(info)(style.formats)
+    maybeInfo.foreach(info => store.write(info)(style.formats))
 
     result
   }
