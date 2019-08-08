@@ -84,7 +84,6 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   )(
-      onError: (File, Throwable) => T,
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
     val reporter = new ScalafmtSbtReporter(log, writer)
@@ -125,10 +124,6 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: PrintWriter
   ): Unit = {
     val cnt = withFormattedSources(sources, config, log, writer)(
-      (file, e) => {
-        log.err(e.toString)
-        0
-      },
       (file, input, output) => {
         if (input != output) {
           IO.write(file, output)
@@ -170,10 +165,6 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: PrintWriter
   ): Boolean = {
     val unformattedCount = withFormattedSources(sources, config, log, writer)(
-      (file, e) => {
-        log.err(e.toString)
-        false
-      },
       (file, input, output) => {
         val diff = input != output
         if (diff) {
