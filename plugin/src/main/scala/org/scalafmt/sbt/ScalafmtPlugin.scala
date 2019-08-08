@@ -78,6 +78,9 @@ object ScalafmtPlugin extends AutoPlugin {
 
   val globalInstance = Scalafmt.create(this.getClass.getClassLoader)
 
+  private def withMaybePlural(count: Int, singular: String) =
+    s"$count $singular" + (if (count > 1) "s" else "")
+
   private def withFormattedSources[T](
       sources: Seq[File],
       config: Path,
@@ -85,11 +88,11 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: PrintWriter
   )(
       onFormat: (File, Input, Output) => T
-  ): Seq[Option[T]] = {
+  ): Set[T] = {
     val reporter = new ScalafmtSbtReporter(log, writer)
     val scalafmtInstance = globalInstance.withReporter(reporter)
-    sources
-      .map { file =>
+    sources.toSet
+      .map { file: File =>
         val input = IO.read(file)
         val output =
           scalafmtInstance.format(
@@ -97,7 +100,7 @@ object ScalafmtPlugin extends AutoPlugin {
             file.toPath.toAbsolutePath,
             input
           )
-        Some(onFormat(file, input, output))
+        onFormat(file, input, output)
       }
   }
 
@@ -111,10 +114,13 @@ object ScalafmtPlugin extends AutoPlugin {
     cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
       val changed = cacheMisses.filter(_.exists)
       if (changed.size > 0) {
-        log.info(s"Formatting ${changed.size} Scala sources...")
+        log.info(
+          s"Formatting ${withMaybePlural(changed.size, "Scala source")}..."
+        )
         formatSources(changed.toSeq, config, log, writer)
       }
-    }(sources.toSet).getOrElse(())
+      Set.empty
+    }(sources.toSet)
   }
 
   private def formatSources(
@@ -132,12 +138,11 @@ object ScalafmtPlugin extends AutoPlugin {
           0
         }
       }
-    ).flatten.sum
+    ).sum
 
-    if (cnt > 1) {
-      log.info(s"Reformatted $cnt Scala sources")
+    if (cnt > 0) {
+      log.info(s"Reformatted ${withMaybePlural(cnt, "Scala source")}")
     }
-
   }
 
   private def checkSources(
@@ -146,16 +151,16 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Boolean = {
+  ): Unit = {
     cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
       val changed = cacheMisses.filter(_.exists)
       if (changed.size > 0) {
-        log.info(s"Checking ${changed.size} Scala sources...")
+        log.info(
+          s"Checking ${withMaybePlural(changed.size, "Scala source")}..."
+        )
         checkSources(changed.toSeq, config, log, writer)
-      } else {
-        true
       }
-    }(sources.toSet).getOrElse(true)
+    }(sources.toSet)
   }
 
   private def checkSources(
@@ -163,31 +168,33 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Boolean = {
-    val unformattedCount = withFormattedSources(sources, config, log, writer)(
+  ): Unit = {
+    val unformattedFiles = withFormattedSources(sources, config, log, writer)(
       (file, input, output) => {
         val diff = input != output
         if (diff) {
           log.warn(s"${file.toString} isn't formatted properly!")
+          Some(file)
+        } else {
+          None
         }
-        !diff
       }
-    ).flatten.count(x => !x)
-    if (unformattedCount > 0) {
+    ).flatten
+
+    if (!unformattedFiles.isEmpty) {
       throw new MessageOnlyException(
-        s"${unformattedCount} files must be formatted"
+        s"${withMaybePlural(unformattedFiles.size, "file")} must be formatted"
       )
     }
-    unformattedCount == 0
   }
 
-  private def cached[T](
+  private def cached(
       cacheBaseDirectory: File,
       outStyle: FileInfo.Style,
       config: Path
   )(
-      action: Set[File] => T
-  ): Set[File] => Option[T] = {
+      action: Set[File] => Unit
+  ): Set[File] => Unit = {
     lazy val outCache = Difference.outputs(
       CacheStoreFactory(cacheBaseDirectory).make("out-cache"),
       outStyle
@@ -199,13 +206,11 @@ object ScalafmtPlugin extends AutoPlugin {
           val cacheMisses = updatedOrAdded.intersect(inputs)
           if (!cacheMisses.isEmpty) {
             // incremental run
-            Some(action(cacheMisses))
+            action(cacheMisses)
           } else {
             // config file must have changed, rerun everything
-            Some(action(inputs))
+            action(inputs)
           }
-        } else {
-          None
         }
       }
     }
@@ -246,14 +251,16 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.text()
       )
     },
-    scalafmtCheck :=
+    scalafmtCheck := {
       checkSources(
         (streams in scalafmt).value.cacheDirectory,
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
-      ),
+      )
+      true // the return is useless as an exception is thrown on error
+    },
     scalafmtSbtCheck := {
       checkSources(
         sbtSources.value,
@@ -267,6 +274,7 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.log,
         streams.value.text()
       )
+      true // the return is useless as an exception is thrown on error
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
