@@ -53,11 +53,9 @@ lazy val p12 = project.settings(
 )
 lazy val p13 = project.settings(
   scalaVersion := "2.12.1",
-  scalafmtConfig := file(".scalafmt13.conf")
 )
 lazy val p14 = project.settings(
   scalaVersion := "2.12.1",
-  scalafmtConfig := file(".scalafmt14.conf")
 )
 lazy val p15 = project.settings(
   scalaVersion := "2.12.1",
