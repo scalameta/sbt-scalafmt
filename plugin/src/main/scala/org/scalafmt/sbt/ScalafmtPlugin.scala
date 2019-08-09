@@ -208,18 +208,18 @@ object ScalafmtPlugin extends AutoPlugin {
       filesAreOutputs = true
     )
     sourceFiles =>
-      val input = sourceFiles + config.toFile
+      val configFile = config.toAbsolutePath.toFile
+      val input = sourceFiles + configFile
 
       val reportHandler: ChangeReport[File] => Option[UnformattedSources] = {
         outReport =>
           val updatedOrAdded = outReport.modified -- outReport.removed
           if (!updatedOrAdded.isEmpty) {
-            val cacheMisses = updatedOrAdded.intersect(sourceFiles)
-            if (!cacheMisses.isEmpty) {
+            if (!updatedOrAdded.contains(configFile)) {
               // partial cache hit, incremental run
-              Some(action(cacheMisses))
+              Some(action(updatedOrAdded))
             } else {
-              // config file must have changed, rerun everything
+              // config file has changed, rerun everything
               Some(action(sourceFiles))
             }
           } else {
