@@ -57,7 +57,23 @@ object ScalafmtPlugin extends AutoPlugin {
         "(By default this means the Compile and Test configurations.)"
     )
   }
+
+  val scalafmtCheckImpl =
+    taskKey[ScalafmtCheckAnalysis](
+      "(Internal) Checks if a Scala source is mis-formatted. Does not write to files."
+    )
   import autoImport._
+
+  case class ScalafmtCheckAnalysis(unformatted: List[File])
+  object ScalafmtCheckAnalysis {
+    import sbt.util.CacheImplicits._
+    import sjsonnew.{:*:, LList, LNil}
+    implicit val analysisIso = LList.iso({ a: ScalafmtCheckAnalysis =>
+      ("unformatted", a.unformatted) :*: LNil
+    }, { in: List[File] :*: LNil =>
+      ScalafmtCheckAnalysis(in.head)
+    })
+  }
 
   private val scalafmtDoFormatOnCompile =
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
@@ -141,21 +157,36 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def checkSources(
-      cacheDirectory: File,
+      cacheStoreFactory: CacheStoreFactory,
+      prev: Option[ScalafmtCheckAnalysis],
       sources: Seq[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Boolean = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
-      val changed = cacheMisses.filter(_.exists)
-      if (changed.size > 0) {
-        log.info(s"Checking ${changed.size} Scala sources...")
-        checkSources(changed.toSeq, config, log, writer)
-      } else {
-        true
+  ): ScalafmtCheckAnalysis = {
+    Tracked.diffInputs(
+      cacheStoreFactory.make("input_diff"),
+      FileInfo.lastModified
+    )(sources.toSet) { (inDiff: ChangeReport[File]) =>
+      log.debug(inDiff.toString)
+      val added = inDiff.modified & inDiff.checked
+      val failed = prev match {
+        case None => Nil
+        case Some(x) => x.unformatted filter { _.exists }
       }
-    }(sources.toSet).getOrElse(true)
+      val files = (added ++ failed.toSet).toSeq
+      checkSources(files, config, log, writer)
+    }
+  }
+
+  private def trueOrBoom(analysis: ScalafmtCheckAnalysis): Boolean = {
+    val unformattedCount = analysis.unformatted.size
+    if (unformattedCount > 0) {
+      throw new MessageOnlyException(
+        s"${unformattedCount} files must be formatted"
+      )
+    }
+    true
   }
 
   private def checkSources(
@@ -163,22 +194,18 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Boolean = {
-    val unformattedCount = withFormattedSources(sources, config, log, writer)(
+  ): ScalafmtCheckAnalysis = {
+    log.info(s"Checking ${sources.size} Scala sources...")
+    val unformatted = withFormattedSources(sources, config, log, writer)(
       (file, input, output) => {
         val diff = input != output
         if (diff) {
           log.warn(s"${file.toString} isn't formatted properly!")
-        }
-        !diff
+          Some(file)
+        } else None
       }
-    ).flatten.count(x => !x)
-    if (unformattedCount > 0) {
-      throw new MessageOnlyException(
-        s"${unformattedCount} files must be formatted"
-      )
-    }
-    unformattedCount == 0
+    ).flatten.flatten.toList
+    ScalafmtCheckAnalysis(unformatted)
   }
 
   private def cached[T](
@@ -246,14 +273,21 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.text()
       )
     },
-    scalafmtCheck :=
+    scalafmtCheckImpl := {
+      import sbt.util.CacheImplicits._
       checkSources(
-        (streams in scalafmt).value.cacheDirectory,
+        streams.value.cacheStoreFactory,
+        scalafmtCheckImpl.previous,
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
-      ),
+      )
+    },
+    scalafmtCheck := {
+      val impl = scalafmtCheckImpl.value
+      trueOrBoom(impl)
+    },
     scalafmtSbtCheck := {
       checkSources(
         sbtSources.value,
@@ -261,12 +295,13 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.log,
         streams.value.text()
       )
-      checkSources(
+      val analysis = checkSources(
         projectSources.value,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
       )
+      trueOrBoom(analysis)
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
@@ -319,4 +354,5 @@ object ScalafmtPlugin extends AutoPlugin {
     Seq(
       scalafmtOnCompile := false
     )
+
 }
