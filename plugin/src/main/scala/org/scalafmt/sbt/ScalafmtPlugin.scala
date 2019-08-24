@@ -7,6 +7,7 @@ import sbt.Keys._
 import sbt.Def
 import sbt._
 import complete.DefaultParsers._
+import sbt.util.CacheImplicits._
 import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
 import sbt.util.FilesInfo
@@ -58,20 +59,15 @@ object ScalafmtPlugin extends AutoPlugin {
     )
   }
 
-  val scalafmtCheckImpl =
-    taskKey[ScalafmtCheckAnalysis](
-      "(Internal) Checks if a Scala source is mis-formatted. Does not write to files."
-    )
   import autoImport._
 
-  case class ScalafmtCheckAnalysis(unformatted: List[File])
-  object ScalafmtCheckAnalysis {
-    import sbt.util.CacheImplicits._
+  case class ScalafmtAnalysis(failedScalafmtCheck: List[File])
+  object ScalafmtAnalysis {
     import sjsonnew.{:*:, LList, LNil}
-    implicit val analysisIso = LList.iso({ a: ScalafmtCheckAnalysis =>
-      ("unformatted", a.unformatted) :*: LNil
+    implicit val analysisIso = LList.iso({ a: ScalafmtAnalysis =>
+      ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
     }, { in: List[File] :*: LNil =>
-      ScalafmtCheckAnalysis(in.head)
+      ScalafmtAnalysis(in.head)
     })
   }
 
@@ -118,19 +114,29 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def formatSources(
-      cacheDirectory: File,
+      cacheStoreFactory: CacheStoreFactory,
       sources: Seq[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
-      val changed = cacheMisses.filter(_.exists)
-      if (changed.size > 0) {
-        log.info(s"Formatting ${changed.size} Scala sources...")
-        formatSources(changed.toSeq, config, log, writer)
-      }
-    }(sources.toSet).getOrElse(())
+    trackSourcesAndConfig(cacheStoreFactory, sources, config) {
+      (outDiff, configChanged, prev) =>
+        log.debug(outDiff.toString)
+        val updatedOrAdded = outDiff.modified & outDiff.checked
+        val filesToFormat =
+          if (configChanged) sources
+          else {
+            // in addition to the detected changes, process files that failed scalafmtCheck
+            // we can ignore the succeeded files because, they don't require reformatting
+            (updatedOrAdded.toList ++ prev.failedScalafmtCheck).distinct
+          }
+        if (filesToFormat.nonEmpty) {
+          log.info(s"Formatting ${filesToFormat.size} Scala sources...")
+          formatSources(filesToFormat, config, log, writer)
+        }
+        ScalafmtAnalysis(Nil)
+    }
   }
 
   private def formatSources(
@@ -158,32 +164,33 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private def checkSources(
       cacheStoreFactory: CacheStoreFactory,
-      prev: Option[ScalafmtCheckAnalysis],
       sources: Seq[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): ScalafmtCheckAnalysis = {
-    Tracked.diffInputs(
-      cacheStoreFactory.make("input_diff"),
-      FileInfo.lastModified
-    )(sources.toSet) { (inDiff: ChangeReport[File]) =>
-      log.debug(inDiff.toString)
-      val added = inDiff.modified & inDiff.checked
-      val failed = prev match {
-        case None => Nil
-        case Some(x) => x.unformatted filter { _.exists }
-      }
-      val files = (added ++ failed.toSet).toSeq
-      checkSources(files, config, log, writer)
+  ): ScalafmtAnalysis = {
+    trackSourcesAndConfig(cacheStoreFactory, sources, config) {
+      (outDiff, configChanged, prev) =>
+        log.debug(outDiff.toString)
+        val updatedOrAdded = outDiff.modified & outDiff.checked
+        val filesToCheck =
+          if (configChanged) sources
+          else updatedOrAdded.toList
+        val failed = prev.failedScalafmtCheck filter { _.exists }
+        val files: List[File] = (filesToCheck.toList ++ failed).distinct
+        val result = checkSources(files, config, log, writer)
+        // checkSources moved the cursor forward to save filesToCheck so scalafmt can use it
+        prev.copy(
+          failedScalafmtCheck = result.failedScalafmtCheck
+        )
     }
   }
 
-  private def trueOrBoom(analysis: ScalafmtCheckAnalysis): Boolean = {
-    val unformattedCount = analysis.unformatted.size
-    if (unformattedCount > 0) {
+  private def trueOrBoom(analysis: ScalafmtAnalysis): Boolean = {
+    val failureCount = analysis.failedScalafmtCheck.size
+    if (failureCount > 0) {
       throw new MessageOnlyException(
-        s"${unformattedCount} files must be formatted"
+        s"${failureCount} files must be formatted"
       )
     }
     true
@@ -194,7 +201,7 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): ScalafmtCheckAnalysis = {
+  ): ScalafmtAnalysis = {
     log.info(s"Checking ${sources.size} Scala sources...")
     val unformatted = withFormattedSources(sources, config, log, writer)(
       (file, input, output) => {
@@ -205,37 +212,40 @@ object ScalafmtPlugin extends AutoPlugin {
         } else None
       }
     ).flatten.flatten.toList
-    ScalafmtCheckAnalysis(unformatted)
+    ScalafmtAnalysis(failedScalafmtCheck = unformatted)
   }
 
-  private def cached[T](
-      cacheBaseDirectory: File,
-      outStyle: FileInfo.Style,
+  // This tracks
+  // - changes to source and their last modified dates after the operation
+  // - previous value
+  // - changes to the config file
+  // The tracking is shared between scalafmt and scalafmtCheck
+  private def trackSourcesAndConfig(
+      cacheStoreFactory: CacheStoreFactory,
+      sources: Seq[File],
       config: Path
   )(
-      action: Set[File] => T
-  ): Set[File] => Option[T] = {
-    lazy val outCache = Difference.outputs(
-      CacheStoreFactory(cacheBaseDirectory).make("out-cache"),
-      outStyle
-    )
-    inputs => {
-      outCache(inputs + config.toFile) { outReport =>
-        val updatedOrAdded = outReport.modified -- outReport.removed
-        if (!updatedOrAdded.isEmpty) {
-          val cacheMisses = updatedOrAdded.intersect(inputs)
-          if (!cacheMisses.isEmpty) {
-            // incremental run
-            Some(action(cacheMisses))
-          } else {
-            // config file must have changed, rerun everything
-            Some(action(inputs))
+      f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis
+  ): ScalafmtAnalysis = {
+    // use prevTracker to share previous values between tasks
+    val prevTracker = Tracked.lastOutput[Unit, ScalafmtAnalysis](
+      cacheStoreFactory.make("last")
+    ) { (_, prev0) =>
+      val prev = prev0.getOrElse(ScalafmtAnalysis(Nil))
+      val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
+        cacheStoreFactory.make("config")
+      ) {
+        case (configChanged, configHash) =>
+          Tracked.diffOutputs(
+            cacheStoreFactory.make("output-diff"),
+            FileInfo.lastModified
+          )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+            f(outDiff, configChanged, prev)
           }
-        } else {
-          None
-        }
       }
+      tracker(FileInfo.hash(config.toFile))
     }
+    prevTracker(())
   }
 
   private lazy val sbtSources = thisProject.map { proj =>
@@ -251,13 +261,15 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmt := formatSources(
-      streams.value.cacheDirectory,
-      (unmanagedSources in scalafmt).value,
-      scalaConfig.value,
-      streams.value.log,
-      streams.value.text()
-    ),
+    scalafmt := {
+      formatSources(
+        streams.value.cacheStoreFactory,
+        (unmanagedSources in scalafmt).value,
+        scalaConfig.value,
+        streams.value.log,
+        streams.value.text()
+      )
+    },
     scalafmtIncremental := scalafmt.value,
     scalafmtSbt := {
       formatSources(
@@ -273,20 +285,15 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.text()
       )
     },
-    scalafmtCheckImpl := {
-      import sbt.util.CacheImplicits._
-      checkSources(
-        streams.value.cacheStoreFactory,
-        scalafmtCheckImpl.previous,
+    scalafmtCheck := {
+      val analysis = checkSources(
+        (scalafmt / streams).value.cacheStoreFactory,
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
       )
-    },
-    scalafmtCheck := {
-      val impl = scalafmtCheckImpl.value
-      trueOrBoom(impl)
+      trueOrBoom(analysis)
     },
     scalafmtSbtCheck := {
       checkSources(
