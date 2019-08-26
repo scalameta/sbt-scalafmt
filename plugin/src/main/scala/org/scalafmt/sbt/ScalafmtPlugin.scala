@@ -248,16 +248,24 @@ object ScalafmtPlugin extends AutoPlugin {
     prevTracker(())
   }
 
-  private lazy val sbtSources = thisProject.map { proj =>
+  private lazy val sbtSources = Def.task {
+    val rootBase = (LocalRootProject / baseDirectory).value
+    val thisBase = (thisProject.value).base
     val rootSbt =
-      BuildPaths.configurationSources(proj.base).filterNot(_.isHidden)
-    val projectSbt =
-      (BuildPaths.projectStandard(proj.base) * GlobFilter("*.sbt")).get
-        .filterNot(_.isHidden)
-    rootSbt ++ projectSbt
+      BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
+    val metabuildSbt =
+      if (rootBase == thisBase)
+        (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get
+      else Nil
+    rootSbt ++ metabuildSbt
   }
-  private lazy val projectSources = thisProject.map { proj =>
-    (BuildPaths.projectStandard(proj.base) * GlobFilter("*.scala")).get
+
+  private lazy val metabuildSources = Def.task {
+    val rootBase = (LocalRootProject / baseDirectory).value
+    val thisBase = (thisProject.value).base
+    if (rootBase == thisBase)
+      (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.scala")).get
+    else Nil
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
@@ -279,7 +287,7 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value.text()
       )
       formatSources(
-        projectSources.value.toSet,
+        metabuildSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
@@ -296,19 +304,22 @@ object ScalafmtPlugin extends AutoPlugin {
       trueOrBoom(analysis)
     },
     scalafmtSbtCheck := {
-      checkSources(
-        sbtSources.value,
-        sbtConfig.value,
-        streams.value.log,
-        streams.value.text()
+      trueOrBoom(
+        checkSources(
+          sbtSources.value,
+          sbtConfig.value,
+          streams.value.log,
+          streams.value.text()
+        )
       )
-      val analysis = checkSources(
-        projectSources.value,
-        scalaConfig.value,
-        streams.value.log,
-        streams.value.text()
+      trueOrBoom(
+        checkSources(
+          metabuildSources.value,
+          scalaConfig.value,
+          streams.value.log,
+          streams.value.text()
+        )
       )
-      trueOrBoom(analysis)
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {

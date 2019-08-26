@@ -5,6 +5,14 @@
 > p123/compile:scalafmtCheck
 > p123/test:scalafmtCheck
 
+# expect failure because of bad build.sbt
+-> scalafmtSbtCheck
+> scalafmtSbt
+> scalafmtSbtCheck
+
+$ copy-file changes/Dependencies.scala project/Dependencies.scala
+# expect failure because of bad project/Dependencies.scala
+-> scalafmtSbtCheck
 > scalafmtSbt
 > scalafmtSbtCheck
 
