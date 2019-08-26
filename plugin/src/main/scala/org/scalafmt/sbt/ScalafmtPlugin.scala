@@ -61,12 +61,12 @@ object ScalafmtPlugin extends AutoPlugin {
 
   import autoImport._
 
-  case class ScalafmtAnalysis(failedScalafmtCheck: List[File])
+  case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
   object ScalafmtAnalysis {
     import sjsonnew.{:*:, LList, LNil}
     implicit val analysisIso = LList.iso({ a: ScalafmtAnalysis =>
       ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
-    }, { in: List[File] :*: LNil =>
+    }, { in: Set[File] :*: LNil =>
       ScalafmtAnalysis(in.head)
     })
   }
@@ -124,28 +124,28 @@ object ScalafmtPlugin extends AutoPlugin {
       (outDiff, configChanged, prev) =>
         log.debug(outDiff.toString)
         val updatedOrAdded = outDiff.modified & outDiff.checked
-        val filesToFormat =
-          if (configChanged) sources
+        val filesToFormat: Set[File] =
+          if (configChanged) sources.toSet
           else {
             // in addition to the detected changes, process files that failed scalafmtCheck
             // we can ignore the succeeded files because, they don't require reformatting
-            (updatedOrAdded.toList ++ prev.failedScalafmtCheck).distinct
+            updatedOrAdded | prev.failedScalafmtCheck
           }
         if (filesToFormat.nonEmpty) {
           log.info(s"Formatting ${filesToFormat.size} Scala sources...")
           formatSources(filesToFormat, config, log, writer)
         }
-        ScalafmtAnalysis(Nil)
+        ScalafmtAnalysis(Set.empty)
     }
   }
 
   private def formatSources(
-      sources: Seq[File],
+      sources: Set[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    val cnt = withFormattedSources(sources, config, log, writer)(
+    val cnt = withFormattedSources(sources.toSeq, config, log, writer)(
       (file, input, output) => {
         if (input != output) {
           IO.write(file, output)
@@ -173,12 +173,12 @@ object ScalafmtPlugin extends AutoPlugin {
       (outDiff, configChanged, prev) =>
         log.debug(outDiff.toString)
         val updatedOrAdded = outDiff.modified & outDiff.checked
-        val filesToCheck =
-          if (configChanged) sources
-          else updatedOrAdded.toList
+        val filesToCheck: Set[File] =
+          if (configChanged) sources.toSet
+          else updatedOrAdded
         val failed = prev.failedScalafmtCheck filter { _.exists }
-        val files: List[File] = (filesToCheck.toList ++ failed).distinct
-        val result = checkSources(files, config, log, writer)
+        val files: Set[File] = filesToCheck | failed
+        val result = checkSources(files.toSeq, config, log, writer)
         // checkSources moved the cursor forward to save filesToCheck so scalafmt can use it
         prev.copy(
           failedScalafmtCheck = result.failedScalafmtCheck
@@ -211,7 +211,7 @@ object ScalafmtPlugin extends AutoPlugin {
           Some(file)
         } else None
       }
-    ).flatten.flatten.toList
+    ).flatten.flatten.toSet
     ScalafmtAnalysis(failedScalafmtCheck = unformatted)
   }
 
@@ -231,7 +231,7 @@ object ScalafmtPlugin extends AutoPlugin {
     val prevTracker = Tracked.lastOutput[Unit, ScalafmtAnalysis](
       cacheStoreFactory.make("last")
     ) { (_, prev0) =>
-      val prev = prev0.getOrElse(ScalafmtAnalysis(Nil))
+      val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
       val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
         cacheStoreFactory.make("config")
       ) {
@@ -273,13 +273,13 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtIncremental := scalafmt.value,
     scalafmtSbt := {
       formatSources(
-        sbtSources.value,
+        sbtSources.value.toSet,
         sbtConfig.value,
         streams.value.log,
         streams.value.text()
       )
       formatSources(
-        projectSources.value,
+        projectSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
@@ -333,7 +333,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
       // scalaConfig
       formatSources(
-        absFiles,
+        absFiles.toSet,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
