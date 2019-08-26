@@ -176,12 +176,13 @@ object ScalafmtPlugin extends AutoPlugin {
         val filesToCheck: Set[File] =
           if (configChanged) sources.toSet
           else updatedOrAdded
-        val failed = prev.failedScalafmtCheck filter { _.exists }
-        val files: Set[File] = filesToCheck | failed
-        val result = checkSources(files.toSeq, config, log, writer)
-        // checkSources moved the cursor forward to save filesToCheck so scalafmt can use it
+        val prevFailed: Set[File] =
+          if (configChanged) Set.empty
+          else prev.failedScalafmtCheck & outDiff.unmodified
+        prevFailed foreach { warnBadFormat(_, log) }
+        val result = checkSources(filesToCheck.toSeq, config, log, writer)
         prev.copy(
-          failedScalafmtCheck = result.failedScalafmtCheck
+          failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
         )
     }
   }
@@ -196,6 +197,10 @@ object ScalafmtPlugin extends AutoPlugin {
     true
   }
 
+  private def warnBadFormat(file: File, log: Logger): Unit = {
+    log.warn(s"${file.toString} isn't formatted properly!")
+  }
+
   private def checkSources(
       sources: Seq[File],
       config: Path,
@@ -207,7 +212,7 @@ object ScalafmtPlugin extends AutoPlugin {
       (file, input, output) => {
         val diff = input != output
         if (diff) {
-          log.warn(s"${file.toString} isn't formatted properly!")
+          warnBadFormat(file, log)
           Some(file)
         } else None
       }
