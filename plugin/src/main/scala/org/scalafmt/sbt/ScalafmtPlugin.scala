@@ -216,9 +216,9 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   // This tracks
-  // - changes to source and their last modified dates after the operation
-  // - previous value
-  // - changes to the config file
+  // 1. previous value
+  // 2. changes to the config file
+  // 3. changes to source and their last modified dates after the operation
   // The tracking is shared between scalafmt and scalafmtCheck
   private def trackSourcesAndConfig(
       cacheStoreFactory: CacheStoreFactory,
