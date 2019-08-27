@@ -207,7 +207,9 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   ): ScalafmtAnalysis = {
-    log.info(s"Checking ${sources.size} Scala sources...")
+    if (sources.nonEmpty) {
+      log.info(s"Checking ${sources.size} Scala sources...")
+    }
     val unformatted = withFormattedSources(sources, config, log, writer)(
       (file, input, output) => {
         val diff = input != output
