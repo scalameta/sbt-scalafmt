@@ -5,6 +5,14 @@
 > p123/compile:scalafmtCheck
 > p123/test:scalafmtCheck
 
+# expect failure because of bad build.sbt
+-> scalafmtSbtCheck
+> scalafmtSbt
+> scalafmtSbtCheck
+
+$ copy-file changes/Dependencies.scala project/Dependencies.scala
+# expect failure because of bad project/Dependencies.scala
+-> scalafmtSbtCheck
 > scalafmtSbt
 > scalafmtSbtCheck
 
@@ -94,16 +102,39 @@ $ touch p14/src/main/scala/Test.scala
 
 > p15/scalafmt
 > p15/scalafmtCheck
-$ copy-file .scalafmt.conf .scalafmt15.conf
 # prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
 $ exec chmod 000 p15/src/main/scala/Test.scala
+######## full run expected when config was updated and a source file added since last run
+$ copy-file .scalafmt.conf .scalafmt15.conf
+$ copy-file changes/bad.scala p15/src/main/scala/Test2.scala
+-> p15/scalafmt
+-> p15/scalafmtCheck
+######## full run expected when only config was updated since last run
+$ delete p15/src/main/scala/Test2.scala
 -> p15/scalafmt
 -> p15/scalafmtCheck
 
 > p16/scalafmt
 > p16/scalafmtCheck
-> set p16/scalafmtConfig := file(".scalafmt.conf")
 # prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
 $ exec chmod 000 p16/src/main/scala/Test.scala
+######## full run expected when config was updated and a source file added since last run
+> set p16/scalafmtConfig := file(".scalafmt.conf")
+$ copy-file changes/bad.scala p16/src/main/scala/Test2.scala
 -> p16/scalafmt
 -> p16/scalafmtCheck
+######## full run expected when only config was updated since last run
+$ delete p16/src/main/scala/Test2.scala
+-> p16/scalafmt
+-> p16/scalafmtCheck
+
+$ copy-file changes/bad.scala p17/src/main/scala/Test2.scala
+-> p17/scalafmtCheck
+# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+$ exec chmod 000 p17/src/main/scala/Test.scala
+######## incremetnal checking should carry over failure without actually processing the file
+-> p17/scalafmtCheck
+######## incremental checking expected when all previous validations failed on some sources only
+$ copy-file changes/good.scala p17/src/main/scala/Test2.scala
+> p17/scalafmtCheck
+> p17/scalafmt

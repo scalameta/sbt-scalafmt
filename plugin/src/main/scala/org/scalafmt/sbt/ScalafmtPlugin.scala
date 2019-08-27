@@ -7,6 +7,7 @@ import sbt.Keys._
 import sbt.Def
 import sbt._
 import complete.DefaultParsers._
+import sbt.util.CacheImplicits._
 import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
 import sbt.util.FilesInfo
@@ -57,7 +58,18 @@ object ScalafmtPlugin extends AutoPlugin {
         "(By default this means the Compile and Test configurations.)"
     )
   }
+
   import autoImport._
+
+  case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
+  object ScalafmtAnalysis {
+    import sjsonnew.{:*:, LList, LNil}
+    implicit val analysisIso = LList.iso({ a: ScalafmtAnalysis =>
+      ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
+    }, { in: Set[File] :*: LNil =>
+      ScalafmtAnalysis(in.head)
+    })
+  }
 
   private val scalafmtDoFormatOnCompile =
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
@@ -84,7 +96,6 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: PrintWriter
   )(
-      onError: (File, Throwable) => T,
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
     val reporter = new ScalafmtSbtReporter(log, writer)
@@ -103,32 +114,38 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def formatSources(
-      cacheDirectory: File,
+      cacheStoreFactory: CacheStoreFactory,
       sources: Seq[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
-      val changed = cacheMisses.filter(_.exists)
-      if (changed.size > 0) {
-        log.info(s"Formatting ${changed.size} Scala sources...")
-        formatSources(changed.toSeq, config, log, writer)
-      }
-    }(sources.toSet).getOrElse(())
+    trackSourcesAndConfig(cacheStoreFactory, sources, config) {
+      (outDiff, configChanged, prev) =>
+        log.debug(outDiff.toString)
+        val updatedOrAdded = outDiff.modified & outDiff.checked
+        val filesToFormat: Set[File] =
+          if (configChanged) sources.toSet
+          else {
+            // in addition to the detected changes, process files that failed scalafmtCheck
+            // we can ignore the succeeded files because, they don't require reformatting
+            updatedOrAdded | prev.failedScalafmtCheck
+          }
+        if (filesToFormat.nonEmpty) {
+          log.info(s"Formatting ${filesToFormat.size} Scala sources...")
+          formatSources(filesToFormat, config, log, writer)
+        }
+        ScalafmtAnalysis(Set.empty)
+    }
   }
 
   private def formatSources(
-      sources: Seq[File],
+      sources: Set[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
   ): Unit = {
-    val cnt = withFormattedSources(sources, config, log, writer)(
-      (file, e) => {
-        log.err(e.toString)
-        0
-      },
+    val cnt = withFormattedSources(sources.toSeq, config, log, writer)(
       (file, input, output) => {
         if (input != output) {
           IO.write(file, output)
@@ -146,21 +163,42 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def checkSources(
-      cacheDirectory: File,
+      cacheStoreFactory: CacheStoreFactory,
       sources: Seq[File],
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Boolean = {
-    cached(cacheDirectory, FilesInfo.lastModified, config) { cacheMisses =>
-      val changed = cacheMisses.filter(_.exists)
-      if (changed.size > 0) {
-        log.info(s"Checking ${changed.size} Scala sources...")
-        checkSources(changed.toSeq, config, log, writer)
-      } else {
-        true
-      }
-    }(sources.toSet).getOrElse(true)
+  ): ScalafmtAnalysis = {
+    trackSourcesAndConfig(cacheStoreFactory, sources, config) {
+      (outDiff, configChanged, prev) =>
+        log.debug(outDiff.toString)
+        val updatedOrAdded = outDiff.modified & outDiff.checked
+        val filesToCheck: Set[File] =
+          if (configChanged) sources.toSet
+          else updatedOrAdded
+        val prevFailed: Set[File] =
+          if (configChanged) Set.empty
+          else prev.failedScalafmtCheck & outDiff.unmodified
+        prevFailed foreach { warnBadFormat(_, log) }
+        val result = checkSources(filesToCheck.toSeq, config, log, writer)
+        prev.copy(
+          failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
+        )
+    }
+  }
+
+  private def trueOrBoom(analysis: ScalafmtAnalysis): Boolean = {
+    val failureCount = analysis.failedScalafmtCheck.size
+    if (failureCount > 0) {
+      throw new MessageOnlyException(
+        s"${failureCount} files must be formatted"
+      )
+    }
+    true
+  }
+
+  private def warnBadFormat(file: File, log: Logger): Unit = {
+    log.warn(s"${file.toString} isn't formatted properly!")
   }
 
   private def checkSources(
@@ -168,113 +206,126 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: PrintWriter
-  ): Boolean = {
-    val unformattedCount = withFormattedSources(sources, config, log, writer)(
-      (file, e) => {
-        log.err(e.toString)
-        false
-      },
+  ): ScalafmtAnalysis = {
+    if (sources.nonEmpty) {
+      log.info(s"Checking ${sources.size} Scala sources...")
+    }
+    val unformatted = withFormattedSources(sources, config, log, writer)(
       (file, input, output) => {
         val diff = input != output
         if (diff) {
-          log.warn(s"${file.toString} isn't formatted properly!")
-        }
-        !diff
+          warnBadFormat(file, log)
+          Some(file)
+        } else None
       }
-    ).flatten.count(x => !x)
-    if (unformattedCount > 0) {
-      throw new MessageOnlyException(
-        s"${unformattedCount} files must be formatted"
-      )
-    }
-    unformattedCount == 0
+    ).flatten.flatten.toSet
+    ScalafmtAnalysis(failedScalafmtCheck = unformatted)
   }
 
-  private def cached[T](
-      cacheBaseDirectory: File,
-      outStyle: FileInfo.Style,
+  // This tracks
+  // 1. previous value
+  // 2. changes to the config file
+  // 3. changes to source and their last modified dates after the operation
+  // The tracking is shared between scalafmt and scalafmtCheck
+  private def trackSourcesAndConfig(
+      cacheStoreFactory: CacheStoreFactory,
+      sources: Seq[File],
       config: Path
   )(
-      action: Set[File] => T
-  ): Set[File] => Option[T] = {
-    lazy val outCache = Difference.outputs(
-      CacheStoreFactory(cacheBaseDirectory).make("out-cache"),
-      outStyle
-    )
-    inputs => {
-      outCache(inputs + config.toFile) { outReport =>
-        val updatedOrAdded = outReport.modified -- outReport.removed
-        if (!updatedOrAdded.isEmpty) {
-          val cacheMisses = updatedOrAdded.intersect(inputs)
-          if (!cacheMisses.isEmpty) {
-            // incremental run
-            Some(action(cacheMisses))
-          } else {
-            // config file must have changed, rerun everything
-            Some(action(inputs))
+      f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis
+  ): ScalafmtAnalysis = {
+    // use prevTracker to share previous values between tasks
+    val prevTracker = Tracked.lastOutput[Unit, ScalafmtAnalysis](
+      cacheStoreFactory.make("last")
+    ) { (_, prev0) =>
+      val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
+      val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
+        cacheStoreFactory.make("config")
+      ) {
+        case (configChanged, configHash) =>
+          Tracked.diffOutputs(
+            cacheStoreFactory.make("output-diff"),
+            FileInfo.lastModified
+          )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+            f(outDiff, configChanged, prev)
           }
-        } else {
-          None
-        }
       }
+      tracker(FileInfo.hash(config.toFile))
     }
+    prevTracker(())
   }
 
-  private lazy val sbtSources = thisProject.map { proj =>
+  private lazy val sbtSources = Def.task {
+    val rootBase = (LocalRootProject / baseDirectory).value
+    val thisBase = (thisProject.value).base
     val rootSbt =
-      BuildPaths.configurationSources(proj.base).filterNot(_.isHidden)
-    val projectSbt =
-      (BuildPaths.projectStandard(proj.base) * GlobFilter("*.sbt")).get
-        .filterNot(_.isHidden)
-    rootSbt ++ projectSbt
+      BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
+    val metabuildSbt =
+      if (rootBase == thisBase)
+        (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get
+      else Nil
+    rootSbt ++ metabuildSbt
   }
-  private lazy val projectSources = thisProject.map { proj =>
-    (BuildPaths.projectStandard(proj.base) * GlobFilter("*.scala")).get
+
+  private lazy val metabuildSources = Def.task {
+    val rootBase = (LocalRootProject / baseDirectory).value
+    val thisBase = (thisProject.value).base
+    if (rootBase == thisBase)
+      (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.scala")).get
+    else Nil
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmt := formatSources(
-      streams.value.cacheDirectory,
-      (unmanagedSources in scalafmt).value,
-      scalaConfig.value,
-      streams.value.log,
-      streams.value.text()
-    ),
-    scalafmtIncremental := scalafmt.value,
-    scalafmtSbt := {
+    scalafmt := {
       formatSources(
-        sbtSources.value,
-        sbtConfig.value,
-        streams.value.log,
-        streams.value.text()
-      )
-      formatSources(
-        projectSources.value,
+        streams.value.cacheStoreFactory,
+        (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
       )
     },
-    scalafmtCheck :=
-      checkSources(
-        (streams in scalafmt).value.cacheDirectory,
-        (unmanagedSources in scalafmt).value,
-        scalaConfig.value,
-        streams.value.log,
-        streams.value.text()
-      ),
-    scalafmtSbtCheck := {
-      checkSources(
-        sbtSources.value,
+    scalafmtIncremental := scalafmt.value,
+    scalafmtSbt := {
+      formatSources(
+        sbtSources.value.toSet,
         sbtConfig.value,
         streams.value.log,
         streams.value.text()
       )
-      checkSources(
-        projectSources.value,
+      formatSources(
+        metabuildSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
+      )
+    },
+    scalafmtCheck := {
+      val analysis = checkSources(
+        (scalafmt / streams).value.cacheStoreFactory,
+        (unmanagedSources in scalafmt).value,
+        scalaConfig.value,
+        streams.value.log,
+        streams.value.text()
+      )
+      trueOrBoom(analysis)
+    },
+    scalafmtSbtCheck := {
+      trueOrBoom(
+        checkSources(
+          sbtSources.value,
+          sbtConfig.value,
+          streams.value.log,
+          streams.value.text()
+        )
+      )
+      trueOrBoom(
+        checkSources(
+          metabuildSources.value,
+          scalaConfig.value,
+          streams.value.log,
+          streams.value.text()
+        )
       )
     },
     scalafmtDoFormatOnCompile := Def.settingDyn {
@@ -300,7 +351,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
       // scalaConfig
       formatSources(
-        absFiles,
+        absFiles.toSet,
         scalaConfig.value,
         streams.value.log,
         streams.value.text()
@@ -328,4 +379,5 @@ object ScalafmtPlugin extends AutoPlugin {
     Seq(
       scalafmtOnCompile := false
     )
+
 }
