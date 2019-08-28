@@ -1,4 +1,5 @@
 import java.io.File
+import scala.util.{Failure, Success, Try}
 
 fork in ThisBuild := true
 
@@ -67,6 +68,18 @@ lazy val p16 = project.settings(
 )
 lazy val p17 = project.settings(
   scalaVersion := "2.12.1",
+  TaskKey[Unit](
+    label = "failIffScalafmtCheckFailsBecauseProcessingInaccessibleSource",
+    description = "fails if and only if the wrapped scalafmtCheck fails with a FileNotFoundException "
+  ) := {
+    (Compile / scalafmtCheck).result.value match {
+      case Inc(inc: Incomplete) =>
+        inc.directCause.collect {
+          case e: java.io.FileNotFoundException => throw e
+        }
+      case _ =>
+    }
+  }
 )
 
 def assertContentsEqual(file: File, expected: String): Unit = {

@@ -128,13 +128,17 @@ $ delete p16/src/main/scala/Test2.scala
 -> p16/scalafmt
 -> p16/scalafmtCheck
 
+######## start by checking a good Test.scala and a bad Test2.scala
 $ copy-file changes/bad.scala p17/src/main/scala/Test2.scala
 -> p17/scalafmtCheck
-# prevent reading the source (without changing the mtime) to detect actual/uncached invocation of scalafmt
+# prevent reading the sources (without changing the mtime) to detect actual/uncached invocation of scalafmt
 $ exec chmod 000 p17/src/main/scala/Test.scala
-######## incremetnal checking should carry over failure without actually processing the file
+$ exec chmod 000 p17/src/main/scala/Test2.scala
+######## incremental checking should carry over failure without actually processing any file
+> p17/failIffScalafmtCheckFailsBecauseProcessingInaccessibleSource
 -> p17/scalafmtCheck
-######## incremental checking expected when all previous validations failed on some sources only
+######## incremental checking only on the updated (previously bad) file expected
+$ delete p17/src/main/scala/Test2.scala
 $ copy-file changes/good.scala p17/src/main/scala/Test2.scala
 > p17/scalafmtCheck
 > p17/scalafmt
