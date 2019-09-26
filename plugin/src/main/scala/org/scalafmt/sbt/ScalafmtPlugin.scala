@@ -1,6 +1,6 @@
 package org.scalafmt.sbt
 
-import java.io.PrintWriter
+import java.io.OutputStreamWriter
 import java.nio.file.Path
 
 import sbt.Keys._
@@ -94,7 +94,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       config: Path,
       log: Logger,
-      writer: PrintWriter
+      writer: OutputStreamWriter
   )(
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
@@ -118,7 +118,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       config: Path,
       log: Logger,
-      writer: PrintWriter
+      writer: OutputStreamWriter
   ): Unit = {
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
@@ -143,7 +143,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Set[File],
       config: Path,
       log: Logger,
-      writer: PrintWriter
+      writer: OutputStreamWriter
   ): Unit = {
     val cnt = withFormattedSources(sources.toSeq, config, log, writer)(
       (file, input, output) => {
@@ -167,7 +167,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       config: Path,
       log: Logger,
-      writer: PrintWriter
+      writer: OutputStreamWriter
   ): ScalafmtAnalysis = {
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
@@ -205,7 +205,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       config: Path,
       log: Logger,
-      writer: PrintWriter
+      writer: OutputStreamWriter
   ): ScalafmtAnalysis = {
     if (sources.nonEmpty) {
       log.info(s"Checking ${sources.size} Scala sources...")
@@ -282,7 +282,7 @@ object ScalafmtPlugin extends AutoPlugin {
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
-        streams.value.text()
+        outputStreamWriter(streams.value)
       )
     },
     scalafmtIncremental := scalafmt.value,
@@ -291,13 +291,13 @@ object ScalafmtPlugin extends AutoPlugin {
         sbtSources.value.toSet,
         sbtConfig.value,
         streams.value.log,
-        streams.value.text()
+        outputStreamWriter(streams.value)
       )
       formatSources(
         metabuildSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
-        streams.value.text()
+        outputStreamWriter(streams.value)
       )
     },
     scalafmtCheck := {
@@ -306,7 +306,7 @@ object ScalafmtPlugin extends AutoPlugin {
         (unmanagedSources in scalafmt).value,
         scalaConfig.value,
         streams.value.log,
-        streams.value.text()
+        outputStreamWriter(streams.value)
       )
       trueOrBoom(analysis)
     },
@@ -316,7 +316,7 @@ object ScalafmtPlugin extends AutoPlugin {
           sbtSources.value,
           sbtConfig.value,
           streams.value.log,
-          streams.value.text()
+          outputStreamWriter(streams.value)
         )
       )
       trueOrBoom(
@@ -324,7 +324,7 @@ object ScalafmtPlugin extends AutoPlugin {
           metabuildSources.value,
           scalaConfig.value,
           streams.value.log,
-          streams.value.text()
+          outputStreamWriter(streams.value)
         )
       )
     },
@@ -354,10 +354,13 @@ object ScalafmtPlugin extends AutoPlugin {
         absFiles.toSet,
         scalaConfig.value,
         streams.value.log,
-        streams.value.text()
+        outputStreamWriter(streams.value)
       )
     }
   )
+
+  private def outputStreamWriter(streams: TaskStreams): OutputStreamWriter =
+    new OutputStreamWriter(streams.binary())
 
   private val anyConfigsInThisProject = ScopeFilter(
     configurations = inAnyConfiguration
