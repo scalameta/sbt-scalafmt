@@ -25,7 +25,7 @@ inThisBuild(
         url("https://github.com/tanishiking/")
       )
     ),
-    resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers += Resolver.sonatypeRepo("public"),
     scalaVersion := "2.12.8",
     publishArtifact in packageDoc := sys.env.contains("CI"),
     publishArtifact in packageSrc := sys.env.contains("CI")
@@ -39,7 +39,7 @@ lazy val plugin = project
   .settings(
     moduleName := "sbt-scalafmt",
     libraryDependencies ++= List(
-      "org.scalameta" %% "scalafmt-dynamic" % "2.0.0"
+      "org.scalameta" %% "scalafmt-dynamic" % "2.1.0-RC2"
     ),
     scriptedBufferLog := false,
     scriptedLaunchOpts += s"-Dplugin.version=${version.value}"
