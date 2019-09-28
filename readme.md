@@ -10,7 +10,7 @@ repository see [scalameta/scalafmt](https://github.com/scalameta/scalafmt/).
 
 Add following line into `project/plugins.sbt`
 ```sbt
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.0.5")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.0.6")
 ```
 
 ### [User documentation](https://scalameta.org/scalafmt/)
