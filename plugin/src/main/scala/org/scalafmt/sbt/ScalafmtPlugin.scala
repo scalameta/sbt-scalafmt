@@ -271,7 +271,16 @@ object ScalafmtPlugin extends AutoPlugin {
     val rootBase = (LocalRootProject / baseDirectory).value
     val thisBase = (thisProject.value).base
     if (rootBase == thisBase)
-      (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.scala")).get
+      BuildPaths
+        .projectStandard(thisBase)
+        .descendantsExcept(
+          "*.scala",
+          (pathname: File) =>
+            pathname.getAbsolutePath
+              .drop(thisBase.getAbsolutePath.length)
+              .contains("/target/")
+        )
+        .get
     else Nil
   }
 
