@@ -275,6 +275,7 @@ object ScalafmtPlugin extends AutoPlugin {
       val projectDirectory = BuildPaths.projectStandard(thisBase)
       val targetDirectory =
         BuildPaths.outputDirectory(projectDirectory).getAbsolutePath
+      println(projectDirectory)
       projectDirectory
         .descendantsExcept(
           "*.scala",

@@ -265,3 +265,23 @@ TaskKey[Unit]("check") := {
     """.stripMargin
   )
 }
+
+
+TaskKey[Unit]("checkManagedSources") := {
+  assertContentsEqual(
+    file("project/x/Something.scala"),
+    """
+      |// format me
+      |object kek {}
+      |""".stripMargin
+  )
+
+  assertContentsEqual(
+    file("project/target/managed.scala"),
+    """
+      |// don't touch me!!!
+      |
+      |object a       {}
+      |""".stripMargin
+  )
+}
