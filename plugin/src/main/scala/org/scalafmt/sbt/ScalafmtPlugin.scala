@@ -270,18 +270,21 @@ object ScalafmtPlugin extends AutoPlugin {
   private lazy val metabuildSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
     val thisBase = (thisProject.value).base
-    if (rootBase == thisBase)
-      BuildPaths
-        .projectStandard(thisBase)
+
+    if (rootBase == thisBase) {
+      val projectDirectory = BuildPaths.projectStandard(thisBase)
+      val targetDirectory =
+        BuildPaths.outputDirectory(projectDirectory).getAbsolutePath
+      projectDirectory
         .descendantsExcept(
           "*.scala",
           (pathname: File) =>
-            pathname.getAbsolutePath
-              .drop(thisBase.getAbsolutePath.length)
-              .contains("/target/")
+            pathname.getAbsolutePath.startsWith(targetDirectory)
         )
         .get
-    else Nil
+    } else {
+      Nil
+    }
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
