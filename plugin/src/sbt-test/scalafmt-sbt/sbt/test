@@ -142,3 +142,8 @@ $ delete p17/src/main/scala/Test2.scala
 $ copy-file changes/good.scala p17/src/main/scala/Test2.scala
 > p17/scalafmtCheck
 > p17/scalafmt
+
+$ copy-file changes/target/managed.scala project/target/managed.scala
+$ copy-file changes/x/Something.scala project/x/Something.scala
+> scalafmtSbt
+> checkManagedSources
