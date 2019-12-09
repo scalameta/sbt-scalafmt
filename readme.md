@@ -1,6 +1,7 @@
 # sbt-scalafmt
 [![Build Status](https://travis-ci.org/scalameta/sbt-scalafmt.svg?branch=master)](https://travis-ci.org/scalameta/sbt-scalafmt)
 [![Join the chat at https://gitter.im/scalameta/scalafmt](https://badges.gitter.im/scalameta/scalafmt.svg)](https://gitter.im/scalameta/scalafmt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the discord chat](https://img.shields.io/discord/632642981228314653?label=discord)](https://discordapp.com/channels/632642981228314653/632665341864181780)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.scalameta/sbt-scalafmt/badge.svg?kill_cache=1)](https://search.maven.org/artifact/org.scalameta/sbt-scalafmt/)
 
 This is the repository for the Scalafmt sbt plugin, for the main Scalafmt
