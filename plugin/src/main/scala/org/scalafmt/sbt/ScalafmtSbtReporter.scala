@@ -24,6 +24,14 @@ class ScalafmtSbtReporter(log: Logger, out: OutputStreamWriter)
     }
   }
 
+  override def error(file: Path, message: String, e: Throwable): Unit = {
+    if (e.getMessage != null) {
+      error(file, s"$message: ${e.getMessage()}")
+    } else {
+      throw new FailedToFormat(file.toString, e)
+    }
+  }
+
   override def excluded(file: Path): Unit =
     log.debug(s"file excluded: $file")
 
