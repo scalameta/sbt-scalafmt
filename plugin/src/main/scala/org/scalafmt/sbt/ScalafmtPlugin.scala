@@ -314,7 +314,7 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        resolvers.value
+        fullResolvers.value
       )
     },
     scalafmtIncremental := scalafmt.value,
@@ -324,14 +324,14 @@ object ScalafmtPlugin extends AutoPlugin {
         sbtConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        resolvers.value
+        fullResolvers.value
       )
       formatSources(
         metabuildSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        resolvers.value
+        fullResolvers.value
       )
     },
     scalafmtCheck := {
@@ -341,7 +341,7 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        resolvers.value
+        fullResolvers.value
       )
       trueOrBoom(analysis)
     },
@@ -352,7 +352,7 @@ object ScalafmtPlugin extends AutoPlugin {
           sbtConfig.value,
           streams.value.log,
           outputStreamWriter(streams.value),
-          resolvers.value
+          fullResolvers.value
         )
       )
       trueOrBoom(
@@ -361,7 +361,7 @@ object ScalafmtPlugin extends AutoPlugin {
           scalaConfig.value,
           streams.value.log,
           outputStreamWriter(streams.value),
-          resolvers.value
+          fullResolvers.value
         )
       )
     },
@@ -392,7 +392,7 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        resolvers.value
+        fullResolvers.value
       )
     }
   )
