@@ -372,7 +372,7 @@ object ScalafmtPlugin extends AutoPlugin {
         Def.task(())
       }
     }.value,
-    compileInputs in compile := (compileInputs in compile)
+    sources in Compile := (sources in Compile)
       .dependsOn(scalafmtDoFormatOnCompile)
       .value,
     scalafmtOnly := {
