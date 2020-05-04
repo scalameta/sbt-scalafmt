@@ -11,7 +11,7 @@ repository see [scalameta/scalafmt](https://github.com/scalameta/scalafmt/).
 
 Add following line into `project/plugins.sbt`
 ```sbt
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.2")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.4")
 ```
 
 ### [User documentation](https://scalameta.org/scalafmt/)
