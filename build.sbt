@@ -39,7 +39,7 @@ lazy val plugin = project
   .settings(
     moduleName := "sbt-scalafmt",
     libraryDependencies ++= List(
-      "org.scalameta" %% "scalafmt-dynamic" % "2.4.2"
+      "org.scalameta" %% "scalafmt-dynamic" % "2.5.1"
     ),
     scriptedBufferLog := false,
     scriptedLaunchOpts += s"-Dplugin.version=${version.value}"
