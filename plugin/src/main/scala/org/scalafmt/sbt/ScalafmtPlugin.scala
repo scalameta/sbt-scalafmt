@@ -16,7 +16,7 @@ import sbt.util.Logger
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
-import org.scalafmt.interfaces.Scalafmt
+import org.scalafmt.interfaces.{Scalafmt, ScalafmtSessionFactory}
 import sbt.librarymanagement.MavenRepository
 
 object ScalafmtPlugin extends AutoPlugin {
@@ -104,10 +104,22 @@ object ScalafmtPlugin extends AutoPlugin {
     val repositories = resolvers.collect {
       case r: MavenRepository => r.root
     }
-    val scalafmtInstance =
+    val scalafmtSession =
       globalInstance
         .withReporter(reporter)
         .withMavenRepositories(repositories: _*)
+        .withRespectProjectFilters(true) match {
+        case t: ScalafmtSessionFactory =>
+          val session = t.createSession(config.toAbsolutePath)
+          if (session == null) {
+            throw new MessageOnlyException(
+              "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
+            )
+          }
+          session
+        case instance =>
+          new CompatibilityScalafmtSession(config.toAbsolutePath, instance)
+      }
 
     log.debug(
       s"Adding repositories ${repositories.mkString("[", ",", "]")}"
@@ -116,8 +128,7 @@ object ScalafmtPlugin extends AutoPlugin {
       .map { file =>
         val input = IO.read(file)
         val output =
-          scalafmtInstance.format(
-            config.toAbsolutePath,
+          scalafmtSession.format(
             file.toPath.toAbsolutePath,
             input
           )
