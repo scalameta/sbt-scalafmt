@@ -118,7 +118,7 @@ object ScalafmtPlugin extends AutoPlugin {
           }
           session
         case instance =>
-          new PluginInstanceSession(config.toAbsolutePath, instance)
+          new CompatibilityScalafmtSession(config.toAbsolutePath, instance)
       }
 
     log.debug(
