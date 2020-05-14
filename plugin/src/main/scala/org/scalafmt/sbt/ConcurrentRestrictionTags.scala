@@ -6,7 +6,7 @@ trait ConcurrentRestrictionTags {
   /**
     * This tag can be used to control the maximum number of parallel scalafmt tasks in large-scale build trees.
     *
-    * Global / concurrentRestrictions ++= Tags.limit(org.scalafmt.sbt.ConcurrentRestrictionTags.Scalafmt, 3)
+    * Global / concurrentRestrictions += Tags.limit(org.scalafmt.sbt.ConcurrentRestrictionTags.Scalafmt, 3)
     *
     * would prevent SBT from spawning more than three simultaneous Scalafmt tasks
     *
