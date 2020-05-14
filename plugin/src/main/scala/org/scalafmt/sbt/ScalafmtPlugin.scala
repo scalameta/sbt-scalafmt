@@ -17,6 +17,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 import org.scalafmt.interfaces.{Scalafmt, ScalafmtSessionFactory}
+import sbt.ConcurrentRestrictions.Tag
 import sbt.librarymanagement.MavenRepository
 
 object ScalafmtPlugin extends AutoPlugin {
@@ -24,6 +25,9 @@ object ScalafmtPlugin extends AutoPlugin {
 
   object autoImport {
     val scalafmt = taskKey[Unit]("Format Scala sources with scalafmt.")
+
+    private[sbt] val ScalafmtTagPack =
+      Seq(ConcurrentRestrictionTags.Scalafmt, Tags.CPU)
 
     @deprecated("Use scalafmt instead.", "2.0.0")
     val scalafmtIncremental = taskKey[Unit](
@@ -317,8 +321,8 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   }
 
-  lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmt := {
+  private def scalafmtTask =
+    Def.task {
       formatSources(
         streams.value.cacheStoreFactory,
         (unmanagedSources in scalafmt).value,
@@ -327,9 +331,10 @@ object ScalafmtPlugin extends AutoPlugin {
         outputStreamWriter(streams.value),
         fullResolvers.value
       )
-    },
-    scalafmtIncremental := scalafmt.value,
-    scalafmtSbt := {
+    } tag (ScalafmtTagPack: _*)
+
+  private def scalafmtSbtTask =
+    Def.task {
       formatSources(
         sbtSources.value.toSet,
         sbtConfig.value,
@@ -344,8 +349,10 @@ object ScalafmtPlugin extends AutoPlugin {
         outputStreamWriter(streams.value),
         fullResolvers.value
       )
-    },
-    scalafmtCheck := {
+    } tag (ScalafmtTagPack: _*)
+
+  private def scalafmtCheckTask =
+    Def.task {
       val analysis = checkSources(
         (scalafmt / streams).value.cacheStoreFactory,
         (unmanagedSources in scalafmt).value,
@@ -355,8 +362,10 @@ object ScalafmtPlugin extends AutoPlugin {
         fullResolvers.value
       )
       trueOrBoom(analysis)
-    },
-    scalafmtSbtCheck := {
+    } tag (ScalafmtTagPack: _*)
+
+  private def scalafmtSbtCheckTask =
+    Def.task {
       trueOrBoom(
         checkSources(
           sbtSources.value,
@@ -375,10 +384,17 @@ object ScalafmtPlugin extends AutoPlugin {
           fullResolvers.value
         )
       )
-    },
+    } tag (ScalafmtTagPack: _*)
+
+  lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
+    scalafmt := scalafmtTask.value,
+    scalafmtIncremental := scalafmt.value,
+    scalafmtSbt := scalafmtSbtTask.value,
+    scalafmtCheck := scalafmtCheckTask.value,
+    scalafmtSbtCheck := scalafmtSbtCheckTask.value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
-        scalafmt in resolvedScoped.value.scope
+        (scalafmt in resolvedScoped.value.scope)
       } else {
         Def.task(())
       }
