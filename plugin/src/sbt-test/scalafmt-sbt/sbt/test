@@ -57,9 +57,9 @@ $ newer p8/src/main/scala/Test2.scala timestamp
 -> p11/scalafmt
 -> p11/scalafmtCheck
 
-# scalafmt fails if version setting is missing.
--> p12/scalafmt
--> p12/scalafmtCheck
+# scalafmt does not fail if version setting is missing.
+> p12/scalafmt
+> p12/scalafmtCheck
 
 > check
 
