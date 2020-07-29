@@ -20,5 +20,10 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - run: git fetch --tags -f
-      - run: TEST="scalafmt" ./bin/scalafmt --test
-      - run: TEST="plugin/scripted" sbt plugin/scripted
+      - run: sbt plugin/scripted
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: olafurpg/setup-scala@v7
+      - run: ./bin/scalafmt --test
