@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [openjdk@1.8]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: olafurpg/setup-scala@v7
+        with:
+          java-version: ${{ matrix.java }}
+      - run: git fetch --tags -f
+      - run: TEST="scalafmt" ./bin/scalafmt --test
+      - run: TEST="plugin/scripted" sbt plugin/scripted
