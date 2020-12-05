@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [openjdk@1.8]
+        java: [adopt@1.8]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
