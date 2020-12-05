@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: olafurpg/setup-scala@v7
+      - uses: olafurpg/setup-scala@v10
         with:
           java-version: ${{ matrix.java }}
       - run: git fetch --tags -f
