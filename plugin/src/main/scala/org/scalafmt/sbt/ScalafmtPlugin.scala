@@ -292,34 +292,24 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private lazy val sbtSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
-    val thisBase = (thisProject.value).base
     val rootSbt =
-      BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
+      BuildPaths.configurationSources(rootBase).filterNot(_.isHidden)
     val metabuildSbt =
-      if (rootBase == thisBase)
-        (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get
-      else Nil
+      (BuildPaths.projectStandard(rootBase) ** GlobFilter("*.sbt")).get
     rootSbt ++ metabuildSbt
   }
 
   private lazy val metabuildSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
-    val thisBase = (thisProject.value).base
-
-    if (rootBase == thisBase) {
-      val projectDirectory = BuildPaths.projectStandard(thisBase)
-      val targetDirectory =
-        BuildPaths.outputDirectory(projectDirectory).getAbsolutePath
-      projectDirectory
-        .descendantsExcept(
-          "*.scala",
-          (pathname: File) =>
-            pathname.getAbsolutePath.startsWith(targetDirectory)
-        )
-        .get
-    } else {
-      Nil
-    }
+    val projectDirectory = BuildPaths.projectStandard(rootBase)
+    val targetDirectory =
+      BuildPaths.outputDirectory(projectDirectory).getAbsolutePath
+    projectDirectory
+      .descendantsExcept(
+        "*.scala",
+        (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory)
+      )
+      .get
   }
 
   private def scalafmtTask =
@@ -341,14 +331,14 @@ object ScalafmtPlugin extends AutoPlugin {
         sbtConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        resolvers.value
       )
       formatSources(
         metabuildSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        resolvers.value
       )
     } tag (ScalafmtTagPack: _*)
 
@@ -373,7 +363,7 @@ object ScalafmtPlugin extends AutoPlugin {
           sbtConfig.value,
           streams.value.log,
           outputStreamWriter(streams.value),
-          fullResolvers.value
+          resolvers.value
         )
       )
       trueOrBoom(
@@ -382,7 +372,7 @@ object ScalafmtPlugin extends AutoPlugin {
           scalaConfig.value,
           streams.value.log,
           outputStreamWriter(streams.value),
-          fullResolvers.value
+          resolvers.value
         )
       )
     } tag (ScalafmtTagPack: _*)
@@ -390,9 +380,7 @@ object ScalafmtPlugin extends AutoPlugin {
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
     scalafmt := scalafmtTask.value,
     scalafmtIncremental := scalafmt.value,
-    scalafmtSbt := scalafmtSbtTask.value,
     scalafmtCheck := scalafmtCheckTask.value,
-    scalafmtSbtCheck := scalafmtSbtCheckTask.value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
         (scalafmt in resolvedScoped.value.scope)
@@ -441,7 +429,9 @@ object ScalafmtPlugin extends AutoPlugin {
   override def buildSettings: Seq[Def.Setting[_]] = Seq(
     scalafmtConfig := {
       (baseDirectory in ThisBuild).value / ".scalafmt.conf"
-    }
+    },
+    scalafmtSbt := scalafmtSbtTask.value,
+    scalafmtSbtCheck := scalafmtSbtCheckTask.value
   )
 
   override def globalSettings: Seq[Def.Setting[_]] =
