@@ -3,24 +3,23 @@ package org.scalafmt.sbt
 import java.io.PrintWriter
 import java.io.OutputStreamWriter
 import java.nio.file.Path
-
 import org.scalafmt.interfaces.ScalafmtReporter
 import sbt.internal.util.MessageOnlyException
 import sbt.util.Logger
 
 import scala.util.control.NoStackTrace
 
-class ScalafmtSbtReporter(log: Logger, out: OutputStreamWriter)
+class ScalafmtSbtReporter(log: Logger, out: OutputStreamWriter, isDetailedError: Boolean)
     extends ScalafmtReporter {
   override def error(file: Path, message: String): Unit = {
     throw new MessageOnlyException(s"$message: $file")
   }
 
   override def error(file: Path, e: Throwable): Unit = {
-    if (e.getMessage != null) {
-      error(file, e.getMessage)
-    } else {
-      throw new FailedToFormat(file.toString, e)
+    Option(e.getMessage) match {
+      case Some(_) if isDetailedError => throw new ScalafmtSbtError(file, e)
+      case Some(_) => error(file, e.getMessage)
+      case None => throw new FailedToFormat(file.toString, e)
     }
   }
 
@@ -44,4 +43,7 @@ class ScalafmtSbtReporter(log: Logger, out: OutputStreamWriter)
   private class FailedToFormat(filename: String, cause: Throwable)
       extends Exception(filename, cause)
       with NoStackTrace
+
+  private class ScalafmtSbtError(file: Path, cause: Throwable)
+      extends Exception(s"sbt-scalafmt failed on $file", cause)
 }
