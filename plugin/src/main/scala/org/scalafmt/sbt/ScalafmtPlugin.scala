@@ -63,7 +63,7 @@ object ScalafmtPlugin extends AutoPlugin {
         "(By default this means the Compile and Test configurations.)"
     )
     val scalafmtDetailedError =
-      settingKey[Boolean]("Log detailed error with stack trace, off by default")
+      settingKey[Boolean]("Enables logging of detailed errors with stacktraces, disabled by default")
   }
 
   import autoImport._
@@ -103,11 +103,11 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
-      isDetailedError: Boolean
+      detailedErrorEnabled: Boolean
   )(
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
-    val reporter = new ScalafmtSbtReporter(log, writer, isDetailedError)
+    val reporter = new ScalafmtSbtReporter(log, writer, detailedErrorEnabled)
     val repositories = resolvers.collect {
       case r: MavenRepository => r.root
     }
@@ -151,7 +151,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
-      isDetailedError: Boolean
+      detailedErrorEnabled: Boolean
   ): Unit = {
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
@@ -172,7 +172,7 @@ object ScalafmtPlugin extends AutoPlugin {
             log,
             writer,
             resolvers,
-            isDetailedError
+            detailedErrorEnabled
           )
         }
         ScalafmtAnalysis(Set.empty)
@@ -185,7 +185,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
-      isDetailedError: Boolean
+      detailedErrorEnabled: Boolean
   ): Unit = {
     val cnt =
       withFormattedSources(
@@ -194,7 +194,7 @@ object ScalafmtPlugin extends AutoPlugin {
         log,
         writer,
         resolvers,
-        isDetailedError
+        detailedErrorEnabled
       )(
         (file, input, output) => {
           if (input != output) {
@@ -219,7 +219,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
-      isDetailedError: Boolean
+      detailedErrorEnabled: Boolean
   ): ScalafmtAnalysis = {
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
@@ -239,7 +239,7 @@ object ScalafmtPlugin extends AutoPlugin {
             log,
             writer,
             resolvers,
-            isDetailedError
+            detailedErrorEnabled
           )
         prev.copy(
           failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
@@ -267,7 +267,7 @@ object ScalafmtPlugin extends AutoPlugin {
       log: Logger,
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
-      isDetailedError: Boolean
+      detailedErrorEnabled: Boolean
   ): ScalafmtAnalysis = {
     if (sources.nonEmpty) {
       log.info(s"Checking ${sources.size} Scala sources...")
@@ -279,7 +279,7 @@ object ScalafmtPlugin extends AutoPlugin {
         log,
         writer,
         resolvers,
-        isDetailedError
+        detailedErrorEnabled
       )(
         (file, input, output) => {
           val diff = input != output
@@ -358,7 +358,7 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def scalafmtTask =
-    Def.task { //TODO implement from here
+    Def.task {
       formatSources(
         streams.value.cacheStoreFactory,
         (unmanagedSources in scalafmt).value,
