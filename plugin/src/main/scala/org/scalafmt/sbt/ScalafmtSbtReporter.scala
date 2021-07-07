@@ -9,15 +9,19 @@ import sbt.util.Logger
 
 import scala.util.control.NoStackTrace
 
-class ScalafmtSbtReporter(log: Logger, out: OutputStreamWriter, detailedErrorEnabled: Boolean)
-    extends ScalafmtReporter {
+class ScalafmtSbtReporter(
+    log: Logger,
+    out: OutputStreamWriter,
+    detailedErrorEnabled: Boolean
+) extends ScalafmtReporter {
   override def error(file: Path, message: String): Unit = {
     throw new MessageOnlyException(s"$message: $file")
   }
 
   override def error(file: Path, e: Throwable): Unit = {
     Option(e.getMessage) match {
-      case Some(_) if detailedErrorEnabled => throw new ScalafmtSbtError(file, e)
+      case Some(_) if detailedErrorEnabled =>
+        throw new ScalafmtSbtError(file, e)
       case Some(_) => error(file, e.getMessage)
       case None => throw new FailedToFormat(file.toString, e)
     }

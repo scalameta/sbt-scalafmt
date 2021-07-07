@@ -63,7 +63,9 @@ object ScalafmtPlugin extends AutoPlugin {
         "(By default this means the Compile and Test configurations.)"
     )
     val scalafmtDetailedError =
-      settingKey[Boolean]("Enables logging of detailed errors with stacktraces, disabled by default")
+      settingKey[Boolean](
+        "Enables logging of detailed errors with stacktraces, disabled by default"
+      )
   }
 
   import autoImport._
@@ -429,7 +431,7 @@ object ScalafmtPlugin extends AutoPlugin {
     } tag (ScalafmtTagPack: _*)
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmt := scalafmtTask,
+    scalafmt := scalafmtTask.value,
     scalafmtIncremental := scalafmt.value,
     scalafmtSbt := scalafmtSbtTask.value,
     scalafmtCheck := scalafmtCheckTask.value,
