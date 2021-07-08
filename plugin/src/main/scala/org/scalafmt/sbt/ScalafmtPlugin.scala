@@ -62,6 +62,10 @@ object ScalafmtPlugin extends AutoPlugin {
       "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
         "(By default this means the Compile and Test configurations.)"
     )
+    val scalafmtDetailedError =
+      settingKey[Boolean](
+        "Enables logging of detailed errors with stacktraces, disabled by default"
+      )
   }
 
   import autoImport._
@@ -100,11 +104,12 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: OutputStreamWriter,
-      resolvers: Seq[Resolver]
+      resolvers: Seq[Resolver],
+      detailedErrorEnabled: Boolean
   )(
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
-    val reporter = new ScalafmtSbtReporter(log, writer)
+    val reporter = new ScalafmtSbtReporter(log, writer, detailedErrorEnabled)
     val repositories = resolvers.collect {
       case r: MavenRepository => r.root
     }
@@ -147,7 +152,8 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: OutputStreamWriter,
-      resolvers: Seq[Resolver]
+      resolvers: Seq[Resolver],
+      detailedErrorEnabled: Boolean
   ): Unit = {
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
@@ -162,7 +168,14 @@ object ScalafmtPlugin extends AutoPlugin {
           }
         if (filesToFormat.nonEmpty) {
           log.info(s"Formatting ${filesToFormat.size} Scala sources...")
-          formatSources(filesToFormat, config, log, writer, resolvers)
+          formatSources(
+            filesToFormat,
+            config,
+            log,
+            writer,
+            resolvers,
+            detailedErrorEnabled
+          )
         }
         ScalafmtAnalysis(Set.empty)
     }
@@ -173,10 +186,18 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: OutputStreamWriter,
-      resolvers: Seq[Resolver]
+      resolvers: Seq[Resolver],
+      detailedErrorEnabled: Boolean
   ): Unit = {
     val cnt =
-      withFormattedSources(sources.toSeq, config, log, writer, resolvers)(
+      withFormattedSources(
+        sources.toSeq,
+        config,
+        log,
+        writer,
+        resolvers,
+        detailedErrorEnabled
+      )(
         (file, input, output) => {
           if (input != output) {
             IO.write(file, output)
@@ -199,7 +220,8 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: OutputStreamWriter,
-      resolvers: Seq[Resolver]
+      resolvers: Seq[Resolver],
+      detailedErrorEnabled: Boolean
   ): ScalafmtAnalysis = {
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
@@ -213,7 +235,14 @@ object ScalafmtPlugin extends AutoPlugin {
           else prev.failedScalafmtCheck & outDiff.unmodified
         prevFailed foreach { warnBadFormat(_, log) }
         val result =
-          checkSources(filesToCheck.toSeq, config, log, writer, resolvers)
+          checkSources(
+            filesToCheck.toSeq,
+            config,
+            log,
+            writer,
+            resolvers,
+            detailedErrorEnabled
+          )
         prev.copy(
           failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
         )
@@ -239,13 +268,21 @@ object ScalafmtPlugin extends AutoPlugin {
       config: Path,
       log: Logger,
       writer: OutputStreamWriter,
-      resolvers: Seq[Resolver]
+      resolvers: Seq[Resolver],
+      detailedErrorEnabled: Boolean
   ): ScalafmtAnalysis = {
     if (sources.nonEmpty) {
       log.info(s"Checking ${sources.size} Scala sources...")
     }
     val unformatted =
-      withFormattedSources(sources, config, log, writer, resolvers)(
+      withFormattedSources(
+        sources,
+        config,
+        log,
+        writer,
+        resolvers,
+        detailedErrorEnabled
+      )(
         (file, input, output) => {
           val diff = input != output
           if (diff) {
@@ -330,7 +367,8 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        fullResolvers.value,
+        scalafmtDetailedError.value
       )
     } tag (ScalafmtTagPack: _*)
 
@@ -341,14 +379,16 @@ object ScalafmtPlugin extends AutoPlugin {
         sbtConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        fullResolvers.value,
+        scalafmtDetailedError.value
       )
       formatSources(
         metabuildSources.value.toSet,
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        fullResolvers.value,
+        scalafmtDetailedError.value
       )
     } tag (ScalafmtTagPack: _*)
 
@@ -360,7 +400,8 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        fullResolvers.value,
+        scalafmtDetailedError.value
       )
       trueOrBoom(analysis)
     } tag (ScalafmtTagPack: _*)
@@ -373,7 +414,8 @@ object ScalafmtPlugin extends AutoPlugin {
           sbtConfig.value,
           streams.value.log,
           outputStreamWriter(streams.value),
-          fullResolvers.value
+          fullResolvers.value,
+          scalafmtDetailedError.value
         )
       )
       trueOrBoom(
@@ -382,7 +424,8 @@ object ScalafmtPlugin extends AutoPlugin {
           scalaConfig.value,
           streams.value.log,
           outputStreamWriter(streams.value),
-          fullResolvers.value
+          fullResolvers.value,
+          scalafmtDetailedError.value
         )
       )
     } tag (ScalafmtTagPack: _*)
@@ -420,7 +463,8 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
-        fullResolvers.value
+        fullResolvers.value,
+        scalafmtDetailedError.value
       )
     }
   )
@@ -446,7 +490,8 @@ object ScalafmtPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     Seq(
-      scalafmtOnCompile := false
+      scalafmtOnCompile := false,
+      scalafmtDetailedError := false
     )
 
 }
