@@ -473,7 +473,9 @@ object ScalafmtPlugin extends AutoPlugin {
   )
 
   override def projectSettings: Seq[Def.Setting[_]] =
-    Seq(Compile, Test).flatMap(inConfig(_)(scalafmtConfigSettings)) ++ Seq(
+    Seq(Compile, Test, IntegrationTest).flatMap {
+      inConfig(_)(scalafmtConfigSettings)
+    } ++ Seq(
       scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).value,
       scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value
     )
