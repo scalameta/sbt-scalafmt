@@ -4,21 +4,20 @@ import java.io.OutputStreamWriter
 import java.nio.file.Path
 
 import sbt.Keys._
-import sbt.Def
 import sbt._
-import complete.DefaultParsers._
+import sbt.librarymanagement.MavenRepository
 import sbt.util.CacheImplicits._
 import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
-import sbt.util.FilesInfo
 import sbt.util.Logger
 
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
+
 import org.scalafmt.interfaces.{Scalafmt, ScalafmtSessionFactory}
-import sbt.ConcurrentRestrictions.Tag
-import sbt.librarymanagement.MavenRepository
+
+import complete.DefaultParsers._
 
 object ScalafmtPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
@@ -73,17 +72,20 @@ object ScalafmtPlugin extends AutoPlugin {
   case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
   object ScalafmtAnalysis {
     import sjsonnew.{:*:, LList, LNil}
-    implicit val analysisIso = LList.iso({ a: ScalafmtAnalysis =>
-      ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
-    }, { in: Set[File] :*: LNil =>
-      ScalafmtAnalysis(in.head)
-    })
+    implicit val analysisIso = LList.iso(
+      { a: ScalafmtAnalysis =>
+        ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
+      },
+      { in: Set[File] :*: LNil =>
+        ScalafmtAnalysis(in.head)
+      }
+    )
   }
 
   private val scalafmtDoFormatOnCompile =
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
 
-  private val scalaConfig = {
+  private val scalaConfig =
     scalafmtConfig.map { f =>
       if (f.exists()) {
         f.toPath
@@ -91,7 +93,6 @@ object ScalafmtPlugin extends AutoPlugin {
         throw new MessageOnlyException(s"File not exists: ${f.toPath}")
       }
     }
-  }
   private val sbtConfig = scalaConfig
 
   private type Input = String
@@ -110,8 +111,8 @@ object ScalafmtPlugin extends AutoPlugin {
       onFormat: (File, Input, Output) => T
   ): Seq[Option[T]] = {
     val reporter = new ScalafmtSbtReporter(log, writer, detailedErrorEnabled)
-    val repositories = resolvers.collect {
-      case r: MavenRepository => r.root
+    val repositories = resolvers.collect { case r: MavenRepository =>
+      r.root
     }
     val scalafmtSession =
       globalInstance
@@ -154,7 +155,7 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
       detailedErrorEnabled: Boolean
-  ): Unit = {
+  ): Unit =
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
         log.debug(outDiff.toString)
@@ -179,7 +180,6 @@ object ScalafmtPlugin extends AutoPlugin {
         }
         ScalafmtAnalysis(Set.empty)
     }
-  }
 
   private def formatSources(
       sources: Set[File],
@@ -197,16 +197,14 @@ object ScalafmtPlugin extends AutoPlugin {
         writer,
         resolvers,
         detailedErrorEnabled
-      )(
-        (file, input, output) => {
-          if (input != output) {
-            IO.write(file, output)
-            1
-          } else {
-            0
-          }
+      ) { (file, input, output) =>
+        if (input != output) {
+          IO.write(file, output)
+          1
+        } else {
+          0
         }
-      ).flatten.sum
+      }.flatten.sum
 
     if (cnt > 1) {
       log.info(s"Reformatted $cnt Scala sources")
@@ -222,7 +220,7 @@ object ScalafmtPlugin extends AutoPlugin {
       writer: OutputStreamWriter,
       resolvers: Seq[Resolver],
       detailedErrorEnabled: Boolean
-  ): ScalafmtAnalysis = {
+  ): ScalafmtAnalysis =
     trackSourcesAndConfig(cacheStoreFactory, sources, config) {
       (outDiff, configChanged, prev) =>
         log.debug(outDiff.toString)
@@ -247,7 +245,6 @@ object ScalafmtPlugin extends AutoPlugin {
           failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
         )
     }
-  }
 
   private def trueOrBoom(analysis: ScalafmtAnalysis): Boolean = {
     val failureCount = analysis.failedScalafmtCheck.size
@@ -259,9 +256,8 @@ object ScalafmtPlugin extends AutoPlugin {
     true
   }
 
-  private def warnBadFormat(file: File, log: Logger): Unit = {
+  private def warnBadFormat(file: File, log: Logger): Unit =
     log.warn(s"${file.toString} isn't formatted properly!")
-  }
 
   private def checkSources(
       sources: Seq[File],
@@ -282,15 +278,13 @@ object ScalafmtPlugin extends AutoPlugin {
         writer,
         resolvers,
         detailedErrorEnabled
-      )(
-        (file, input, output) => {
-          val diff = input != output
-          if (diff) {
-            warnBadFormat(file, log)
-            Some(file)
-          } else None
-        }
-      ).flatten.flatten.toSet
+      ) { (file, input, output) =>
+        val diff = input != output
+        if (diff) {
+          warnBadFormat(file, log)
+          Some(file)
+        } else None
+      }.flatten.flatten.toSet
     ScalafmtAnalysis(failedScalafmtCheck = unformatted)
   }
 
@@ -313,14 +307,13 @@ object ScalafmtPlugin extends AutoPlugin {
       val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
       val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
         cacheStoreFactory.make("config")
-      ) {
-        case (configChanged, configHash) =>
-          Tracked.diffOutputs(
-            cacheStoreFactory.make("output-diff"),
-            FileInfo.lastModified
-          )(sources.toSet) { (outDiff: ChangeReport[File]) =>
-            f(outDiff, configChanged, prev)
-          }
+      ) { case (configChanged, configHash) =>
+        Tracked.diffOutputs(
+          cacheStoreFactory.make("output-diff"),
+          FileInfo.lastModified
+        )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+          f(outDiff, configChanged, prev)
+        }
       }
       tracker(FileInfo.hash(config.toFile))
     }
@@ -448,14 +441,14 @@ object ScalafmtPlugin extends AutoPlugin {
       .value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
-      val absFiles = files.flatMap(fileS => {
-        Try { IO.resolve(baseDirectory.value, new File(fileS)) } match {
+      val absFiles = files.flatMap { fileS =>
+        Try(IO.resolve(baseDirectory.value, new File(fileS))) match {
           case Failure(e) =>
             streams.value.log.error(s"Error with $fileS file: $e")
             None
           case Success(file) => Some(file)
         }
-      })
+      }
 
       // scalaConfig
       formatSources(

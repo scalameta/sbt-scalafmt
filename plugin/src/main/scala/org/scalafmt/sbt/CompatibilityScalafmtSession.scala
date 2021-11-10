@@ -1,6 +1,7 @@
 package org.scalafmt.sbt
 
 import java.nio.file.Path
+
 import org.scalafmt.interfaces.{Scalafmt, ScalafmtSession}
 
 private[sbt] class CompatibilityScalafmtSession(
