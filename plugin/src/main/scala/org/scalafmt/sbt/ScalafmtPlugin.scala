@@ -118,7 +118,6 @@ object ScalafmtPlugin extends AutoPlugin {
       globalInstance
         .withReporter(reporter)
         .withMavenRepositories(repositories: _*)
-        .withRespectVersion(false)
         .withRespectProjectFilters(true) match {
         case t: ScalafmtSessionFactory =>
           val session = t.createSession(config.toAbsolutePath)
