@@ -134,16 +134,14 @@ object ScalafmtPlugin extends AutoPlugin {
     log.debug(
       s"Adding repositories ${repositories.mkString("[", ",", "]")}"
     )
-    sources
-      .map { file =>
+    sources.map { file =>
+      val path = file.toPath.toAbsolutePath
+      if (scalafmtSession.matchesProjectFilters(path)) {
         val input = IO.read(file)
-        val output =
-          scalafmtSession.format(
-            file.toPath.toAbsolutePath,
-            input
-          )
+        val output = scalafmtSession.format(path, input)
         Some(onFormat(file, input, output))
-      }
+      } else None
+    }
   }
 
   private def formatSources(
