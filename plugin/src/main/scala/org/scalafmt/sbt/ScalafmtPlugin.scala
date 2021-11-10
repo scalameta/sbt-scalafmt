@@ -98,7 +98,9 @@ object ScalafmtPlugin extends AutoPlugin {
   private type Input = String
   private type Output = String
 
-  val globalInstance = Scalafmt.create(this.getClass.getClassLoader)
+  val globalInstance = Scalafmt
+    .create(this.getClass.getClassLoader)
+    .withRespectProjectFilters(true)
 
   private def withFormattedSources[T](
       sources: Seq[File],
@@ -114,11 +116,12 @@ object ScalafmtPlugin extends AutoPlugin {
     val repositories = resolvers.collect { case r: MavenRepository =>
       r.root
     }
-    val scalafmtSession =
+    val instance =
       globalInstance
         .withReporter(reporter)
         .withMavenRepositories(repositories: _*)
-        .withRespectProjectFilters(true) match {
+    val scalafmtSession =
+      instance match {
         case t: ScalafmtSessionFactory =>
           val session = t.createSession(config.toAbsolutePath)
           if (session == null) {
@@ -127,7 +130,7 @@ object ScalafmtPlugin extends AutoPlugin {
             )
           }
           session
-        case instance =>
+        case _ =>
           new CompatibilityScalafmtSession(config.toAbsolutePath, instance)
       }
 
