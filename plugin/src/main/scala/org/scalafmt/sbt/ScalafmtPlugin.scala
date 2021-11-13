@@ -349,11 +349,11 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   }
 
-  private def scalafmtTask =
+  private def scalafmtTask(sources: Seq[File]) =
     Def.task {
       formatSources(
         streams.value.cacheStoreFactory,
-        (unmanagedSources in scalafmt).value,
+        sources,
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
@@ -382,11 +382,11 @@ object ScalafmtPlugin extends AutoPlugin {
       )
     } tag (ScalafmtTagPack: _*)
 
-  private def scalafmtCheckTask =
+  private def scalafmtCheckTask(sources: Seq[File]) =
     Def.task {
       val analysis = checkSources(
         (scalafmt / streams).value.cacheStoreFactory,
-        (unmanagedSources in scalafmt).value,
+        sources,
         scalaConfig.value,
         streams.value.log,
         outputStreamWriter(streams.value),
@@ -420,11 +420,17 @@ object ScalafmtPlugin extends AutoPlugin {
       )
     } tag (ScalafmtTagPack: _*)
 
+  private def getScalafmtSourcesTask[A](
+      f: Seq[File] => Def.Initialize[Task[A]]
+  )(default: A) = Def.taskDyn[A] {
+    (unmanagedSources in scalafmt).?.value.map(f).getOrElse(Def.task(default))
+  }
+
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmt := scalafmtTask.value,
+    scalafmt := getScalafmtSourcesTask(scalafmtTask)(Unit).value,
     scalafmtIncremental := scalafmt.value,
     scalafmtSbt := scalafmtSbtTask.value,
-    scalafmtCheck := scalafmtCheckTask.value,
+    scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask)(true).value,
     scalafmtSbtCheck := scalafmtSbtCheckTask.value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
