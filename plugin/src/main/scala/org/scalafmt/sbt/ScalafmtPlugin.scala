@@ -406,12 +406,15 @@ object ScalafmtPlugin extends AutoPlugin {
   private def getScalafmtSourcesTask(
       f: Seq[File] => Def.Initialize[Task[Unit]]
   ) = Def.taskDyn[Unit] {
-    (unmanagedSources in scalafmt).?.value.map(f).getOrElse(Def.task(Unit))
+    val sources = (unmanagedSources in scalafmt).?.value
+    sources.filter(_.nonEmpty).map(f).getOrElse(Def.task(Unit))
   }
 
   private def getScalafmtSbtTasks(
-      f: (Seq[File], Path) => Def.Initialize[Task[Unit]]
+      func: (Seq[File], Path) => Def.Initialize[Task[Unit]]
   ) = Def.taskDyn[Unit] {
+    def f(files: Seq[File], config: Path) =
+      if (files.isEmpty) Def.task[Unit]() else func(files, config)
     Def.sequential(
       f(sbtSources.value, sbtConfig.value),
       f(metabuildSources.value, scalaConfig.value)
