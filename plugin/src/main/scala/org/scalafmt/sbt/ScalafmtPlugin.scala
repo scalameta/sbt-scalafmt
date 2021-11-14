@@ -364,19 +364,11 @@ object ScalafmtPlugin extends AutoPlugin {
       )
     } tag (ScalafmtTagPack: _*)
 
-  private def scalafmtSbtTask =
+  private def scalafmtSbtTask(sources: Seq[File], config: Path) =
     Def.task {
       formatSources(
-        sbtSources.value.toSet,
-        sbtConfig.value,
-        streams.value.log,
-        outputStreamWriter(streams.value),
-        fullResolvers.value,
-        scalafmtDetailedError.value
-      )
-      formatSources(
-        metabuildSources.value.toSet,
-        scalaConfig.value,
+        sources.toSet,
+        config,
         streams.value.log,
         outputStreamWriter(streams.value),
         fullResolvers.value,
@@ -398,28 +390,17 @@ object ScalafmtPlugin extends AutoPlugin {
       throwOnFailure(analysis)
     } tag (ScalafmtTagPack: _*)
 
-  private def scalafmtSbtCheckTask =
+  private def scalafmtSbtCheckTask(sources: Seq[File], config: Path) =
     Def.task {
-      throwOnFailure(
-        checkSources(
-          sbtSources.value,
-          sbtConfig.value,
-          streams.value.log,
-          outputStreamWriter(streams.value),
-          fullResolvers.value,
-          scalafmtDetailedError.value
-        )
+      val analysis = checkSources(
+        sources,
+        config,
+        streams.value.log,
+        outputStreamWriter(streams.value),
+        fullResolvers.value,
+        scalafmtDetailedError.value
       )
-      throwOnFailure(
-        checkSources(
-          metabuildSources.value,
-          scalaConfig.value,
-          streams.value.log,
-          outputStreamWriter(streams.value),
-          fullResolvers.value,
-          scalafmtDetailedError.value
-        )
-      )
+      throwOnFailure(analysis)
     } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
@@ -428,12 +409,21 @@ object ScalafmtPlugin extends AutoPlugin {
     (unmanagedSources in scalafmt).?.value.map(f).getOrElse(Def.task(Unit))
   }
 
+  private def getScalafmtSbtTasks(
+      f: (Seq[File], Path) => Def.Initialize[Task[Unit]]
+  ) = Def.taskDyn[Unit] {
+    Def.sequential(
+      f(sbtSources.value, sbtConfig.value),
+      f(metabuildSources.value, scalaConfig.value)
+    )
+  }
+
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
     scalafmt := getScalafmtSourcesTask(scalafmtTask).value,
     scalafmtIncremental := scalafmt.value,
-    scalafmtSbt := scalafmtSbtTask.value,
+    scalafmtSbt := getScalafmtSbtTasks(scalafmtSbtTask).value,
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
-    scalafmtSbtCheck := scalafmtSbtCheckTask.value,
+    scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
         (scalafmt in resolvedScoped.value.scope)
