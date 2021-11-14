@@ -33,7 +33,7 @@ object ScalafmtPlugin extends AutoPlugin {
       "Format Scala sources to be compiled incrementally with scalafmt (alias to scalafmt)."
     )
     val scalafmtCheck =
-      taskKey[Boolean](
+      taskKey[Unit](
         "Fails if a Scala source is mis-formatted. Does not write to files."
       )
     val scalafmtOnCompile =
@@ -48,7 +48,7 @@ object ScalafmtPlugin extends AutoPlugin {
       "Format *.sbt and project/*.scala files for this sbt build."
     )
     val scalafmtSbtCheck =
-      taskKey[Boolean](
+      taskKey[Unit](
         "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
           "Does not write to files."
       )
@@ -246,14 +246,13 @@ object ScalafmtPlugin extends AutoPlugin {
         )
     }
 
-  private def trueOrBoom(analysis: ScalafmtAnalysis): Boolean = {
+  private def trueOrBoom(analysis: ScalafmtAnalysis): Unit = {
     val failureCount = analysis.failedScalafmtCheck.size
     if (failureCount > 0) {
       throw new MessageOnlyException(
         s"${failureCount} files must be formatted"
       )
     }
-    true
   }
 
   private def warnBadFormat(file: File, log: Logger): Unit =
@@ -423,17 +422,17 @@ object ScalafmtPlugin extends AutoPlugin {
       )
     } tag (ScalafmtTagPack: _*)
 
-  private def getScalafmtSourcesTask[A](
-      f: Seq[File] => Def.Initialize[Task[A]]
-  )(default: A) = Def.taskDyn[A] {
-    (unmanagedSources in scalafmt).?.value.map(f).getOrElse(Def.task(default))
+  private def getScalafmtSourcesTask(
+      f: Seq[File] => Def.Initialize[Task[Unit]]
+  ) = Def.taskDyn[Unit] {
+    (unmanagedSources in scalafmt).?.value.map(f).getOrElse(Def.task(Unit))
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmt := getScalafmtSourcesTask(scalafmtTask)(Unit).value,
+    scalafmt := getScalafmtSourcesTask(scalafmtTask).value,
     scalafmtIncremental := scalafmt.value,
     scalafmtSbt := scalafmtSbtTask.value,
-    scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask)(true).value,
+    scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := scalafmtSbtCheckTask.value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
