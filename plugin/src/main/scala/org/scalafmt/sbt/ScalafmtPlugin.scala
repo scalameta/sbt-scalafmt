@@ -246,7 +246,7 @@ object ScalafmtPlugin extends AutoPlugin {
         )
     }
 
-  private def trueOrBoom(analysis: ScalafmtAnalysis): Unit = {
+  private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
     val failureCount = analysis.failedScalafmtCheck.size
     if (failureCount > 0) {
       throw new MessageOnlyException(
@@ -395,12 +395,12 @@ object ScalafmtPlugin extends AutoPlugin {
         fullResolvers.value,
         scalafmtDetailedError.value
       )
-      trueOrBoom(analysis)
+      throwOnFailure(analysis)
     } tag (ScalafmtTagPack: _*)
 
   private def scalafmtSbtCheckTask =
     Def.task {
-      trueOrBoom(
+      throwOnFailure(
         checkSources(
           sbtSources.value,
           sbtConfig.value,
@@ -410,7 +410,7 @@ object ScalafmtPlugin extends AutoPlugin {
           scalafmtDetailedError.value
         )
       )
-      trueOrBoom(
+      throwOnFailure(
         checkSources(
           metabuildSources.value,
           scalaConfig.value,
