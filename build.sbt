@@ -34,12 +34,13 @@ inThisBuild(
 onLoadMessage := s"Welcome to sbt-scalafmt ${version.value}"
 skip in publish := true
 
+val scalafmtVersion = "3.2.0"
 lazy val plugin = project
   .enablePlugins(SbtPlugin)
   .settings(
     moduleName := "sbt-scalafmt",
     libraryDependencies ++= List(
-      "org.scalameta" %% "scalafmt-dynamic" % "3.1.1"
+      "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion
     ),
     scriptedBufferLog := false,
     scriptedLaunchOpts += s"-Dplugin.version=${version.value}"
