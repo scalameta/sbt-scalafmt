@@ -15,7 +15,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-import org.scalafmt.interfaces.{Scalafmt, ScalafmtSessionFactory}
+import org.scalafmt.interfaces.Scalafmt
 
 import complete.DefaultParsers._
 
@@ -116,23 +116,15 @@ object ScalafmtPlugin extends AutoPlugin {
     val repositories = resolvers.collect { case r: MavenRepository =>
       r.root
     }
-    val instance =
+    val scalafmtSession =
       globalInstance
         .withReporter(reporter)
         .withMavenRepositories(repositories: _*)
-    val scalafmtSession =
-      instance match {
-        case t: ScalafmtSessionFactory =>
-          val session = t.createSession(config.toAbsolutePath)
-          if (session == null) {
-            throw new MessageOnlyException(
-              "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
-            )
-          }
-          session
-        case _ =>
-          new CompatibilityScalafmtSession(config.toAbsolutePath, instance)
-      }
+        .createSession(config.toAbsolutePath)
+    if (scalafmtSession == null)
+      throw new MessageOnlyException(
+        "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
+      )
 
     log.debug(
       s"Adding repositories ${repositories.mkString("[", ",", "]")}"
