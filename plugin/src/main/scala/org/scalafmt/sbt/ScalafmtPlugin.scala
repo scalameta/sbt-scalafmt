@@ -9,7 +9,6 @@ import sbt.librarymanagement.MavenRepository
 import sbt.util.CacheImplicits._
 import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
-import sbt.util.Logger
 
 import scala.util.Failure
 import scala.util.Success
@@ -103,204 +102,164 @@ object ScalafmtPlugin extends AutoPlugin {
     .create(this.getClass.getClassLoader)
     .withRespectProjectFilters(true)
 
-  private def withFormattedSources[T](
-      sources: Seq[File],
+  private class FormatSession(
       config: Path,
-      log: Logger,
-      writer: OutputStreamWriter,
+      taskStreams: TaskStreams,
       resolvers: Seq[Resolver],
       detailedErrorEnabled: Boolean
-  )(
-      onFormat: (File, Input, Output) => T
-  ): Seq[Option[T]] = {
-    val reporter = new ScalafmtSbtReporter(log, writer, detailedErrorEnabled)
-    val repositories = resolvers.collect { case r: MavenRepository =>
-      r.root
-    }
-    log.debug(
-      s"Adding repositories ${repositories.mkString("[", ",", "]")}"
+  ) {
+    private val log = taskStreams.log
+    private val reporter = new ScalafmtSbtReporter(
+      log,
+      new OutputStreamWriter(taskStreams.binary()),
+      detailedErrorEnabled
     )
-    val scalafmtSession =
-      globalInstance
-        .withReporter(reporter)
-        .withMavenRepositories(repositories: _*)
-        .createSession(config.toAbsolutePath)
-    if (scalafmtSession == null)
-      throw new MessageOnlyException(
-        "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
-      )
 
-    sources.map { file =>
-      val path = file.toPath.toAbsolutePath
-      if (scalafmtSession.matchesProjectFilters(path)) {
-        val input = IO.read(file)
-        val output = scalafmtSession.format(path, input)
-        Some(onFormat(file, input, output))
-      } else None
-    }
-  }
-
-  private def formatSources(
-      cacheStoreFactory: CacheStoreFactory,
-      sources: Seq[File],
-      config: Path,
-      log: Logger,
-      writer: OutputStreamWriter,
-      resolvers: Seq[Resolver],
-      detailedErrorEnabled: Boolean
-  ): Unit =
-    trackSourcesAndConfig(cacheStoreFactory, sources, config) {
-      (outDiff, configChanged, prev) =>
-        log.debug(outDiff.toString)
-        val updatedOrAdded = outDiff.modified & outDiff.checked
-        val filesToFormat: Set[File] =
-          if (configChanged) sources.toSet
-          else {
-            // in addition to the detected changes, process files that failed scalafmtCheck
-            // we can ignore the succeeded files because, they don't require reformatting
-            updatedOrAdded | prev.failedScalafmtCheck
-          }
-        if (filesToFormat.nonEmpty) {
-          log.info(s"Formatting ${filesToFormat.size} Scala sources...")
-          formatSources(
-            filesToFormat,
-            config,
-            log,
-            writer,
-            resolvers,
-            detailedErrorEnabled
-          )
-        }
-        ScalafmtAnalysis(Set.empty)
-    }
-
-  private def formatSources(
-      sources: Set[File],
-      config: Path,
-      log: Logger,
-      writer: OutputStreamWriter,
-      resolvers: Seq[Resolver],
-      detailedErrorEnabled: Boolean
-  ): Unit = {
-    val cnt =
-      withFormattedSources(
-        sources.toSeq,
-        config,
-        log,
-        writer,
-        resolvers,
-        detailedErrorEnabled
-      ) { (file, input, output) =>
-        if (input != output) {
-          IO.write(file, output)
-          1
-        } else {
-          0
-        }
-      }.flatten.sum
-
-    if (cnt > 1) {
-      log.info(s"Reformatted $cnt Scala sources")
-    }
-
-  }
-
-  private def checkSources(
-      cacheStoreFactory: CacheStoreFactory,
-      sources: Seq[File],
-      config: Path,
-      log: Logger,
-      writer: OutputStreamWriter,
-      resolvers: Seq[Resolver],
-      detailedErrorEnabled: Boolean
-  ): ScalafmtAnalysis =
-    trackSourcesAndConfig(cacheStoreFactory, sources, config) {
-      (outDiff, configChanged, prev) =>
-        log.debug(outDiff.toString)
-        val updatedOrAdded = outDiff.modified & outDiff.checked
-        val filesToCheck: Set[File] =
-          if (configChanged) sources.toSet
-          else updatedOrAdded
-        val prevFailed: Set[File] =
-          if (configChanged) Set.empty
-          else prev.failedScalafmtCheck & outDiff.unmodified
-        prevFailed foreach { warnBadFormat(_, log) }
-        val result =
-          checkSources(
-            filesToCheck.toSeq,
-            config,
-            log,
-            writer,
-            resolvers,
-            detailedErrorEnabled
-          )
-        prev.copy(
-          failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
-        )
-    }
-
-  private def warnBadFormat(file: File, log: Logger): Unit =
-    log.warn(s"${file.toString} isn't formatted properly!")
-
-  private def checkSources(
-      sources: Seq[File],
-      config: Path,
-      log: Logger,
-      writer: OutputStreamWriter,
-      resolvers: Seq[Resolver],
-      detailedErrorEnabled: Boolean
-  ): ScalafmtAnalysis = {
-    if (sources.nonEmpty) {
-      log.info(s"Checking ${sources.size} Scala sources...")
-    }
-    val unformatted =
-      withFormattedSources(
-        sources,
-        config,
-        log,
-        writer,
-        resolvers,
-        detailedErrorEnabled
-      ) { (file, input, output) =>
-        val diff = input != output
-        if (diff) {
-          warnBadFormat(file, log)
-          Some(file)
-        } else None
-      }.flatten.flatten.toSet
-    ScalafmtAnalysis(failedScalafmtCheck = unformatted)
-  }
-
-  // This tracks
-  // 1. previous value
-  // 2. changes to the config file
-  // 3. changes to source and their last modified dates after the operation
-  // The tracking is shared between scalafmt and scalafmtCheck
-  private def trackSourcesAndConfig(
-      cacheStoreFactory: CacheStoreFactory,
-      sources: Seq[File],
-      config: Path
-  )(
-      f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis
-  ): ScalafmtAnalysis = {
-    // use prevTracker to share previous values between tasks
-    val prevTracker = Tracked.lastOutput[Unit, ScalafmtAnalysis](
-      cacheStoreFactory.make("last")
-    ) { (_, prev0) =>
-      val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
-      val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
-        cacheStoreFactory.make("config")
-      ) { case (configChanged, configHash) =>
-        Tracked.diffOutputs(
-          cacheStoreFactory.make("output-diff"),
-          FileInfo.lastModified
-        )(sources.toSet) { (outDiff: ChangeReport[File]) =>
-          f(outDiff, configChanged, prev)
-        }
+    private val scalafmtSession = {
+      val repositories = resolvers.collect { case r: MavenRepository =>
+        r.root
       }
-      tracker(FileInfo.hash(config.toFile))
+      log.debug(
+        s"Adding repositories ${repositories.mkString("[", ",", "]")}"
+      )
+      val scalafmtSession =
+        globalInstance
+          .withReporter(reporter)
+          .withMavenRepositories(repositories: _*)
+          .createSession(config.toAbsolutePath)
+      if (scalafmtSession == null)
+        throw new MessageOnlyException(
+          "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
+        )
+      scalafmtSession
     }
-    prevTracker(())
+
+    private def withFormattedSources[T](sources: Seq[File])(
+        onFormat: (File, Input, Output) => T
+    ): Seq[Option[T]] =
+      sources.map { file =>
+        val path = file.toPath.toAbsolutePath
+        if (scalafmtSession.matchesProjectFilters(path)) {
+          val input = IO.read(file)
+          val output = scalafmtSession.format(path, input)
+          Some(onFormat(file, input, output))
+        } else None
+      }
+
+    def formatTrackedSources(
+        cacheStoreFactory: CacheStoreFactory,
+        sources: Seq[File]
+    ): Unit =
+      trackSourcesAndConfig(cacheStoreFactory, sources) {
+        (outDiff, configChanged, prev) =>
+          log.debug(outDiff.toString)
+          val updatedOrAdded = outDiff.modified & outDiff.checked
+          val filesToFormat: Set[File] =
+            if (configChanged) sources.toSet
+            else {
+              // in addition to the detected changes, process files that failed scalafmtCheck
+              // we can ignore the succeeded files because, they don't require reformatting
+              updatedOrAdded | prev.failedScalafmtCheck
+            }
+          if (filesToFormat.nonEmpty) {
+            log.info(s"Formatting ${filesToFormat.size} Scala sources...")
+            formatFilteredSources(filesToFormat)
+          }
+          ScalafmtAnalysis(Set.empty)
+      }
+
+    def formatSources(sources: Set[File]): Unit =
+      formatFilteredSources(sources)
+
+    private def formatFilteredSources(sources: Set[File]): Unit = {
+      val cnt =
+        withFormattedSources(sources.toSeq) { (file, input, output) =>
+          if (input != output) {
+            IO.write(file, output)
+            1
+          } else {
+            0
+          }
+        }.flatten.sum
+
+      if (cnt > 1) {
+        log.info(s"Reformatted $cnt Scala sources")
+      }
+    }
+
+    def checkTrackedSources(
+        cacheStoreFactory: CacheStoreFactory,
+        sources: Seq[File]
+    ): ScalafmtAnalysis =
+      trackSourcesAndConfig(cacheStoreFactory, sources) {
+        (outDiff, configChanged, prev) =>
+          log.debug(outDiff.toString)
+          val updatedOrAdded = outDiff.modified & outDiff.checked
+          val filesToCheck: Set[File] =
+            if (configChanged) sources.toSet
+            else updatedOrAdded
+          val prevFailed: Set[File] =
+            if (configChanged) Set.empty
+            else prev.failedScalafmtCheck & outDiff.unmodified
+          prevFailed.foreach(warnBadFormat)
+          val result =
+            checkFilteredSources(filesToCheck.toSeq)
+          prev.copy(
+            failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
+          )
+      }
+
+    private def warnBadFormat(file: File): Unit =
+      log.warn(s"${file.toString} isn't formatted properly!")
+
+    def checkSources(sources: Seq[File]): ScalafmtAnalysis =
+      checkFilteredSources(sources)
+
+    private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
+      if (sources.nonEmpty) {
+        log.info(s"Checking ${sources.size} Scala sources...")
+      }
+      val unformatted =
+        withFormattedSources(sources) { (file, input, output) =>
+          val diff = input != output
+          if (diff) {
+            warnBadFormat(file)
+            Some(file)
+          } else None
+        }.flatten.flatten.toSet
+      ScalafmtAnalysis(failedScalafmtCheck = unformatted)
+    }
+
+    // This tracks
+    // 1. previous value
+    // 2. changes to the config file
+    // 3. changes to source and their last modified dates after the operation
+    // The tracking is shared between scalafmt and scalafmtCheck
+    private def trackSourcesAndConfig(
+        cacheStoreFactory: CacheStoreFactory,
+        sources: Seq[File]
+    )(
+        f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis
+    ): ScalafmtAnalysis = {
+      // use prevTracker to share previous values between tasks
+      val prevTracker = Tracked.lastOutput[Unit, ScalafmtAnalysis](
+        cacheStoreFactory.make("last")
+      ) { (_, prev0) =>
+        val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
+        val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
+          cacheStoreFactory.make("config")
+        ) { case (configChanged, configHash) =>
+          Tracked.diffOutputs(
+            cacheStoreFactory.make("output-diff"),
+            FileInfo.lastModified
+          )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+            f(outDiff, configChanged, prev)
+          }
+        }
+        tracker(FileInfo.hash(config.toFile))
+      }
+      prevTracker(())
+    }
   }
 
   private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
@@ -344,72 +303,43 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   }
 
-  private def scalafmtTask(sources: Seq[File]) =
+  private def scalafmtTask(sources: Seq[File], session: FormatSession) =
     Def.task {
-      formatSources(
-        streams.value.cacheStoreFactory,
-        sources,
-        scalaConfig.value,
-        streams.value.log,
-        outputStreamWriter(streams.value),
-        fullResolvers.value,
-        scalafmtDetailedError.value
-      )
+      session.formatTrackedSources(streams.value.cacheStoreFactory, sources)
     } tag (ScalafmtTagPack: _*)
 
-  private def scalafmtCheckTask(sources: Seq[File]) =
+  private def scalafmtCheckTask(sources: Seq[File], session: FormatSession) =
     Def.task {
-      val analysis = checkSources(
+      val analysis = session.checkTrackedSources(
         (scalafmt / streams).value.cacheStoreFactory,
-        sources,
-        scalaConfig.value,
-        streams.value.log,
-        outputStreamWriter(streams.value),
-        fullResolvers.value,
-        scalafmtDetailedError.value
+        sources
       )
       throwOnFailure(analysis)
     } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
-      f: Seq[File] => InitTask
+      f: (Seq[File], FormatSession) => InitTask
   ) = Def.taskDyn[Unit] {
     val sources = (unmanagedSources in scalafmt).?.value.getOrElse(Seq.empty)
-    if (sources.isEmpty) Def.task(Unit)
-    else f(sources)
+    getScalafmtTask(f)(sources, scalaConfig.value)
   }
 
   private def scalafmtSbtTask(
       sources: Seq[File],
-      config: Path
+      session: FormatSession
   ) = Def.task {
-    formatSources(
-      sources.toSet,
-      config,
-      streams.value.log,
-      outputStreamWriter(streams.value),
-      fullResolvers.value,
-      scalafmtDetailedError.value
-    )
+    session.formatSources(sources.toSet)
   } tag (ScalafmtTagPack: _*)
 
   private def scalafmtSbtCheckTask(
       sources: Seq[File],
-      config: Path
+      session: FormatSession
   ) = Def.task {
-    val analysis = checkSources(
-      sources,
-      config,
-      streams.value.log,
-      outputStreamWriter(streams.value),
-      fullResolvers.value,
-      scalafmtDetailedError.value
-    )
-    throwOnFailure(analysis)
+    throwOnFailure(session.checkSources(sources))
   } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSbtTasks(
-      func: (Seq[File], Path) => InitTask
+      func: (Seq[File], FormatSession) => InitTask
   ) = Def.taskDyn {
     joinScalafmtTasks(func)(
       (sbtSources.value, sbtConfig.value),
@@ -418,7 +348,7 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def joinScalafmtTasks(
-      func: (Seq[File], Path) => InitTask
+      func: (Seq[File], FormatSession) => InitTask
   )(tuples: (Seq[File], Path)*) = {
     val tasks = tuples
       .map { case (files, config) => getScalafmtTask(func)(files, config) }
@@ -426,9 +356,18 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def getScalafmtTask(
-      func: (Seq[File], Path) => InitTask
+      func: (Seq[File], FormatSession) => InitTask
   )(files: Seq[File], config: Path) = Def.taskDyn[Unit] {
-    if (files.isEmpty) Def.task(Unit) else func(files, config)
+    if (files.isEmpty) Def.task(Unit)
+    else {
+      val session = new FormatSession(
+        config,
+        streams.value,
+        fullResolvers.value,
+        scalafmtDetailedError.value
+      )
+      func(files, session)
+    }
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
@@ -459,19 +398,14 @@ object ScalafmtPlugin extends AutoPlugin {
       }
 
       // scalaConfig
-      formatSources(
-        absFiles.toSet,
+      new FormatSession(
         scalaConfig.value,
-        streams.value.log,
-        outputStreamWriter(streams.value),
+        streams.value,
         fullResolvers.value,
         scalafmtDetailedError.value
-      )
+      ).formatSources(absFiles.toSet)
     }
   )
-
-  private def outputStreamWriter(streams: TaskStreams): OutputStreamWriter =
-    new OutputStreamWriter(streams.binary())
 
   private val anyConfigsInThisProject = ScopeFilter(
     configurations = inAnyConfiguration
