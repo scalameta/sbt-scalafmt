@@ -97,6 +97,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private type Input = String
   private type Output = String
+  private type InitTask = Def.Initialize[Task[Unit]]
 
   val globalInstance = Scalafmt
     .create(this.getClass.getClassLoader)
@@ -116,6 +117,9 @@ object ScalafmtPlugin extends AutoPlugin {
     val repositories = resolvers.collect { case r: MavenRepository =>
       r.root
     }
+    log.debug(
+      s"Adding repositories ${repositories.mkString("[", ",", "]")}"
+    )
     val scalafmtSession =
       globalInstance
         .withReporter(reporter)
@@ -126,9 +130,6 @@ object ScalafmtPlugin extends AutoPlugin {
         "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
       )
 
-    log.debug(
-      s"Adding repositories ${repositories.mkString("[", ",", "]")}"
-    )
     sources.map { file =>
       val path = file.toPath.toAbsolutePath
       if (scalafmtSession.matchesProjectFilters(path)) {
@@ -238,15 +239,6 @@ object ScalafmtPlugin extends AutoPlugin {
         )
     }
 
-  private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
-    val failureCount = analysis.failedScalafmtCheck.size
-    if (failureCount > 0) {
-      throw new MessageOnlyException(
-        s"${failureCount} files must be formatted"
-      )
-    }
-  }
-
   private def warnBadFormat(file: File, log: Logger): Unit =
     log.warn(s"${file.toString} isn't formatted properly!")
 
@@ -311,6 +303,15 @@ object ScalafmtPlugin extends AutoPlugin {
     prevTracker(())
   }
 
+  private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
+    val failureCount = analysis.failedScalafmtCheck.size
+    if (failureCount > 0) {
+      throw new MessageOnlyException(
+        s"${failureCount} files must be formatted"
+      )
+    }
+  }
+
   private lazy val sbtSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
     val thisBase = (thisProject.value).base
@@ -356,18 +357,6 @@ object ScalafmtPlugin extends AutoPlugin {
       )
     } tag (ScalafmtTagPack: _*)
 
-  private def scalafmtSbtTask(sources: Seq[File], config: Path) =
-    Def.task {
-      formatSources(
-        sources.toSet,
-        config,
-        streams.value.log,
-        outputStreamWriter(streams.value),
-        fullResolvers.value,
-        scalafmtDetailedError.value
-      )
-    } tag (ScalafmtTagPack: _*)
-
   private def scalafmtCheckTask(sources: Seq[File]) =
     Def.task {
       val analysis = checkSources(
@@ -382,31 +371,48 @@ object ScalafmtPlugin extends AutoPlugin {
       throwOnFailure(analysis)
     } tag (ScalafmtTagPack: _*)
 
-  private def scalafmtSbtCheckTask(sources: Seq[File], config: Path) =
-    Def.task {
-      val analysis = checkSources(
-        sources,
-        config,
-        streams.value.log,
-        outputStreamWriter(streams.value),
-        fullResolvers.value,
-        scalafmtDetailedError.value
-      )
-      throwOnFailure(analysis)
-    } tag (ScalafmtTagPack: _*)
-
   private def getScalafmtSourcesTask(
-      f: Seq[File] => Def.Initialize[Task[Unit]]
+      f: Seq[File] => InitTask
   ) = Def.taskDyn[Unit] {
-    val sources = (unmanagedSources in scalafmt).?.value
-    sources.filter(_.nonEmpty).map(f).getOrElse(Def.task(Unit))
+    val sources = (unmanagedSources in scalafmt).?.value.getOrElse(Seq.empty)
+    if (sources.isEmpty) Def.task(Unit)
+    else f(sources)
   }
 
+  private def scalafmtSbtTask(
+      sources: Seq[File],
+      config: Path
+  ) = Def.task {
+    formatSources(
+      sources.toSet,
+      config,
+      streams.value.log,
+      outputStreamWriter(streams.value),
+      fullResolvers.value,
+      scalafmtDetailedError.value
+    )
+  } tag (ScalafmtTagPack: _*)
+
+  private def scalafmtSbtCheckTask(
+      sources: Seq[File],
+      config: Path
+  ) = Def.task {
+    val analysis = checkSources(
+      sources,
+      config,
+      streams.value.log,
+      outputStreamWriter(streams.value),
+      fullResolvers.value,
+      scalafmtDetailedError.value
+    )
+    throwOnFailure(analysis)
+  } tag (ScalafmtTagPack: _*)
+
   private def getScalafmtSbtTasks(
-      func: (Seq[File], Path) => Def.Initialize[Task[Unit]]
+      func: (Seq[File], Path) => InitTask
   ) = Def.taskDyn[Unit] {
-    def f(files: Seq[File], config: Path) =
-      if (files.isEmpty) Def.task[Unit]() else func(files, config)
+    def f(files: Seq[File], config: Path): InitTask =
+      if (files.isEmpty) Def.task(Unit) else func(files, config)
     Def.sequential(
       f(sbtSources.value, sbtConfig.value),
       f(metabuildSources.value, scalaConfig.value)
