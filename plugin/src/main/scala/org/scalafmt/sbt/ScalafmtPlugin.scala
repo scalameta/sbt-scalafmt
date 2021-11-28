@@ -410,13 +410,25 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private def getScalafmtSbtTasks(
       func: (Seq[File], Path) => InitTask
-  ) = Def.taskDyn[Unit] {
-    def f(files: Seq[File], config: Path): InitTask =
-      if (files.isEmpty) Def.task(Unit) else func(files, config)
-    Def.sequential(
-      f(sbtSources.value, sbtConfig.value),
-      f(metabuildSources.value, scalaConfig.value)
+  ) = Def.taskDyn {
+    joinScalafmtTasks(func)(
+      (sbtSources.value, sbtConfig.value),
+      (metabuildSources.value, scalaConfig.value)
     )
+  }
+
+  private def joinScalafmtTasks(
+      func: (Seq[File], Path) => InitTask
+  )(tuples: (Seq[File], Path)*) = {
+    val tasks = tuples
+      .map { case (files, config) => getScalafmtTask(func)(files, config) }
+    Def.sequential(tasks.tail.toList, tasks.head)
+  }
+
+  private def getScalafmtTask(
+      func: (Seq[File], Path) => InitTask
+  )(files: Seq[File], config: Path) = Def.taskDyn[Unit] {
+    if (files.isEmpty) Def.task(Unit) else func(files, config)
   }
 
   lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
