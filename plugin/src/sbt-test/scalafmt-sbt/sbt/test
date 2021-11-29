@@ -142,6 +142,40 @@ $ delete p17/src/main/scala/Test2.scala
 $ copy-file changes/good.scala p17/src/main/scala/Test2.scala
 > p17/scalafmtCheck
 > p17/scalafmt
+$ delete p17/src/main/scala/Test.scala
+
+# set up git
+$ exec git init -b main p17
+# filter dirty files
+> set p17/scalafmtFilter := ("diff-dirty")
+# dirty but should succeed
+$ copy-file changes/good.scala p17/src/main/scala/TestGood.scala
+> p17/scalafmtCheck
+# dirty and should fail
+$ copy-file changes/bad.scala p17/src/main/scala/TestBad.scala
+-> p17/scalafmtCheck
+# tracked yet still fail
+$ exec git -C p17 add "src/main/scala/TestBad.scala"
+-> p17/scalafmtCheck
+# no longer dirty, should succeed
+$ exec git -C p17 commit -m 'added TestBad.scala'
+> p17/scalafmtCheck
+# filter tracked modifications since branch=main
+> set p17/scalafmtFilter := ("diff-ref=main")
+# TestBad is checked in, TestGood not tracked
+> p17/scalafmtCheck
+# copy but unchanged
+$ copy-file changes/bad.scala p17/src/main/scala/TestBad.scala
+> p17/scalafmtCheck
+# copy to new file but untracked
+$ copy-file changes/bad.scala p17/src/main/scala/TestBad2.scala
+> p17/scalafmtCheck
+# now track it
+$ exec git -C p17 add "src/main/scala/TestBad2.scala"
+-> p17/scalafmtCheck
+# now commit it, no longer modified
+$ exec git -C p17 commit -m 'added TestBad2.scala'
+> p17/scalafmtCheck
 
 $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
