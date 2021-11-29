@@ -20,6 +20,9 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - run: git fetch --tags -f
+      - run:
+          # for git tests
+          git config --global user.email "scalafmt@scalameta.org" && git config --global user.name "scalafmt"
       - run: sbt plugin/scripted
   formatting:
     runs-on: ubuntu-latest
