@@ -134,46 +134,55 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtSession
     }
 
+    private def filterFiles(sources: Seq[File]): Seq[File] =
+      sources.distinct.filter { file =>
+        val path = file.toPath.toAbsolutePath
+        scalafmtSession.matchesProjectFilters(path)
+      }
+
     private def withFormattedSources[T](sources: Seq[File])(
         onFormat: (File, Input, Output) => T
     ): Seq[Option[T]] =
       sources.map { file =>
         val path = file.toPath.toAbsolutePath
-        if (scalafmtSession.matchesProjectFilters(path)) {
-          val input = IO.read(file)
-          val output = scalafmtSession.format(path, input)
-          Some(onFormat(file, input, output))
-        } else None
+        Try(IO.read(file)) match {
+          case Failure(x) =>
+            reporter.error(path, "Failed to read", x)
+            None
+          case Success(x) =>
+            val output = scalafmtSession.format(path, x)
+            Some(onFormat(file, x, output))
+        }
       }
 
     def formatTrackedSources(
         cacheStoreFactory: CacheStoreFactory,
         sources: Seq[File]
-    ): Unit =
-      trackSourcesAndConfig(cacheStoreFactory, sources) {
+    ): Unit = {
+      val filteredSources = filterFiles(sources)
+      trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
-          log.debug(outDiff.toString)
           val updatedOrAdded = outDiff.modified & outDiff.checked
-          val filesToFormat: Set[File] =
-            if (configChanged) sources.toSet
+          val filesToFormat: Seq[File] =
+            if (configChanged) filteredSources
             else {
               // in addition to the detected changes, process files that failed scalafmtCheck
               // we can ignore the succeeded files because, they don't require reformatting
-              updatedOrAdded | prev.failedScalafmtCheck
+              (updatedOrAdded | prev.failedScalafmtCheck).toSeq
             }
-          if (filesToFormat.nonEmpty) {
-            log.info(s"Formatting ${filesToFormat.size} Scala sources...")
-            formatFilteredSources(filesToFormat)
-          }
+          formatFilteredSources(filesToFormat)
           ScalafmtAnalysis(Set.empty)
       }
+    }
 
-    def formatSources(sources: Set[File]): Unit =
-      formatFilteredSources(sources)
+    def formatSources(sources: Seq[File]): Unit =
+      formatFilteredSources(filterFiles(sources))
 
-    private def formatFilteredSources(sources: Set[File]): Unit = {
+    private def formatFilteredSources(sources: Seq[File]): Unit = {
+      if (sources.nonEmpty)
+        log.info(s"Formatting ${sources.length} Scala sources...")
       val cnt =
-        withFormattedSources(sources.toSeq) { (file, input, output) =>
+        withFormattedSources(sources) { (file, input, output) =>
           if (input != output) {
             IO.write(file, output)
             1
@@ -190,30 +199,30 @@ object ScalafmtPlugin extends AutoPlugin {
     def checkTrackedSources(
         cacheStoreFactory: CacheStoreFactory,
         sources: Seq[File]
-    ): ScalafmtAnalysis =
-      trackSourcesAndConfig(cacheStoreFactory, sources) {
+    ): ScalafmtAnalysis = {
+      val filteredSources = filterFiles(sources)
+      trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
-          log.debug(outDiff.toString)
           val updatedOrAdded = outDiff.modified & outDiff.checked
-          val filesToCheck: Set[File] =
-            if (configChanged) sources.toSet
-            else updatedOrAdded
+          val filesToCheck: Seq[File] =
+            if (configChanged) filteredSources else updatedOrAdded.toSeq
           val prevFailed: Set[File] =
             if (configChanged) Set.empty
             else prev.failedScalafmtCheck & outDiff.unmodified
           prevFailed.foreach(warnBadFormat)
           val result =
-            checkFilteredSources(filesToCheck.toSeq)
+            checkFilteredSources(filesToCheck)
           prev.copy(
             failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
           )
       }
+    }
 
     private def warnBadFormat(file: File): Unit =
       log.warn(s"${file.toString} isn't formatted properly!")
 
     def checkSources(sources: Seq[File]): ScalafmtAnalysis =
-      checkFilteredSources(sources)
+      checkFilteredSources(filterFiles(sources))
 
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
       if (sources.nonEmpty) {
@@ -253,6 +262,7 @@ object ScalafmtPlugin extends AutoPlugin {
             cacheStoreFactory.make("output-diff"),
             FileInfo.lastModified
           )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+            log.debug(outDiff.toString())
             f(outDiff, configChanged, prev)
           }
         }
@@ -328,7 +338,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       session: FormatSession
   ) = Def.task {
-    session.formatSources(sources.toSet)
+    session.formatSources(sources)
   } tag (ScalafmtTagPack: _*)
 
   private def scalafmtSbtCheckTask(
@@ -403,7 +413,7 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value,
         fullResolvers.value,
         scalafmtDetailedError.value
-      ).formatSources(absFiles.toSet)
+      ).formatSources(absFiles)
     }
   )
 
