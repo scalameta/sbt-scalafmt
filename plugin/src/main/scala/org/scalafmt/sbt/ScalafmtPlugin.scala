@@ -15,6 +15,9 @@ import scala.util.Success
 import scala.util.Try
 
 import org.scalafmt.interfaces.Scalafmt
+import org.scalafmt.sysops.AbsoluteFile
+import org.scalafmt.sysops.FileOps
+import org.scalafmt.sysops.GitOps
 
 import complete.DefaultParsers._
 
@@ -64,6 +67,9 @@ object ScalafmtPlugin extends AutoPlugin {
       settingKey[Boolean](
         "Enables logging of detailed errors with stacktraces, disabled by default"
       )
+    val scalafmtFilter = settingKey[String](
+      "File filtering mode when running scalafmt."
+    )
   }
 
   import autoImport._
@@ -102,10 +108,17 @@ object ScalafmtPlugin extends AutoPlugin {
     .create(this.getClass.getClassLoader)
     .withRespectProjectFilters(true)
 
+  private object FilterMode {
+    val diffDirty = "diff-dirty"
+    val diffRefPrefix = "diff-ref="
+  }
+
   private class FormatSession(
       config: Path,
       taskStreams: TaskStreams,
       resolvers: Seq[Resolver],
+      currentProject: ResolvedProject,
+      filterMode: String,
       detailedErrorEnabled: Boolean
   ) {
     private val log = taskStreams.log
@@ -134,11 +147,27 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtSession
     }
 
-    private def filterFiles(sources: Seq[File]): Seq[File] =
+    private def filterFiles(sources: Seq[File]): Seq[File] = {
+      val filter = getFileFilter()
       sources.distinct.filter { file =>
         val path = file.toPath.toAbsolutePath
-        scalafmtSession.matchesProjectFilters(path)
+        scalafmtSession.matchesProjectFilters(path) && filter(path)
       }
+    }
+
+    private def getFileFilter(): Path => Boolean = {
+      def gitOps = GitOps.FactoryImpl(AbsoluteFile(currentProject.base.toPath))
+      val files =
+        if (filterMode == FilterMode.diffDirty)
+          gitOps.status()
+        else if (filterMode.startsWith(FilterMode.diffRefPrefix))
+          gitOps.diff(filterMode.substring(FilterMode.diffRefPrefix.length))
+        else if (scalafmtSession.isGitOnly)
+          gitOps.lsTree()
+        else null
+      if (files eq null) _ => true
+      else FileOps.getFileMatcher(files.map(_.path))
+    }
 
     private def withFormattedSources[T](sources: Seq[File])(
         onFormat: (File, Input, Output) => T
@@ -374,6 +403,8 @@ object ScalafmtPlugin extends AutoPlugin {
         config,
         streams.value,
         fullResolvers.value,
+        thisProject.value,
+        scalafmtFilter.value,
         scalafmtDetailedError.value
       )
       func(files, session)
@@ -412,6 +443,8 @@ object ScalafmtPlugin extends AutoPlugin {
         scalaConfig.value,
         streams.value,
         fullResolvers.value,
+        thisProject.value,
+        "",
         scalafmtDetailedError.value
       ).formatSources(absFiles)
     }
@@ -437,6 +470,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Def.Setting[_]] =
     Seq(
+      scalafmtFilter := "",
       scalafmtOnCompile := false,
       scalafmtDetailedError := false
     )
