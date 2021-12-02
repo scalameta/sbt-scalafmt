@@ -9,6 +9,7 @@ import sbt.librarymanagement.MavenRepository
 import sbt.util.CacheImplicits._
 import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
+import sbt.util.Level
 
 import scala.util.Failure
 import scala.util.Success
@@ -111,6 +112,13 @@ object ScalafmtPlugin extends AutoPlugin {
   private object FilterMode {
     val diffDirty = "diff-dirty"
     val diffRefPrefix = "diff-ref="
+  }
+
+  private class ScalafmtLogger(log: Logger) extends Logger {
+    override def trace(t: => Throwable): Unit = log.trace(t)
+    override def success(message: => String): Unit = success(message)
+    override def log(level: Level.Value, message: => String): Unit =
+      log.log(level, "scalafmt: " + message)
   }
 
   private class FormatSession(
