@@ -25,6 +25,7 @@ class ScalafmtSbtReporter(
   override def error(file: Path, message: String, e: Throwable): Unit = {
     def getMessage() = {
       val res = new StringWriter()
+      res.write("scalafmt: ")
       res.write(Option(message).getOrElse("failed"))
       res.write(" [")
       res.write(file.toString)
