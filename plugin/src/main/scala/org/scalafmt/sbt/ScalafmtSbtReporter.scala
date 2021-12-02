@@ -2,12 +2,10 @@ package org.scalafmt.sbt
 
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
+import java.io.StringWriter
 import java.nio.file.Path
 
-import sbt.internal.util.MessageOnlyException
 import sbt.util.Logger
-
-import scala.util.control.NoStackTrace
 
 import org.scalafmt.interfaces.ScalafmtReporter
 
@@ -16,23 +14,34 @@ class ScalafmtSbtReporter(
     out: OutputStreamWriter,
     detailedErrorEnabled: Boolean
 ) extends ScalafmtReporter {
+  import ScalafmtSbtReporter._
+
   override def error(file: Path, message: String): Unit =
-    throw new MessageOnlyException(s"$message: $file")
+    error(file, message, null)
 
   override def error(file: Path, e: Throwable): Unit =
-    Option(e.getMessage) match {
-      case Some(_) if detailedErrorEnabled =>
-        throw new ScalafmtSbtError(file, e)
-      case Some(_) => error(file, e.getMessage)
-      case None => throw new FailedToFormat(file.toString, e)
+    error(file, null, e)
+
+  override def error(file: Path, message: String, e: Throwable): Unit = {
+    def getMessage() = {
+      val res = new StringWriter()
+      res.write(Option(message).getOrElse("failed"))
+      res.write(" [")
+      res.write(file.toString)
+      res.write(']')
+      if (null != e) {
+        if (!detailedErrorEnabled)
+          Option(e.getMessage).foreach { x =>
+            res.write(" ")
+            res.write(x)
+          }
+      }
+      res.toString
     }
 
-  override def error(file: Path, message: String, e: Throwable): Unit =
-    if (e.getMessage != null) {
-      error(file, s"$message: ${e.getMessage()}")
-    } else {
-      throw new FailedToFormat(file.toString, e)
-    }
+    val cause = if (detailedErrorEnabled) e else null
+    throw new ScalafmtSbtError(getMessage(), cause)
+  }
 
   override def excluded(file: Path): Unit =
     log.debug(s"file excluded: $file")
@@ -42,11 +51,11 @@ class ScalafmtSbtReporter(
 
   override def downloadWriter(): PrintWriter = new PrintWriter(out)
   override def downloadOutputStreamWriter(): OutputStreamWriter = out
+}
 
-  private class FailedToFormat(filename: String, cause: Throwable)
-      extends Exception(filename, cause)
-      with NoStackTrace
+object ScalafmtSbtReporter {
 
-  private class ScalafmtSbtError(file: Path, cause: Throwable)
-      extends Exception(s"sbt-scalafmt failed on $file", cause)
+  private class ScalafmtSbtError(message: String, cause: Throwable)
+      extends RuntimeException(message, cause)
+
 }
