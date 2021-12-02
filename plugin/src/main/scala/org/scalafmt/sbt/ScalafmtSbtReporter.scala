@@ -12,7 +12,7 @@ import org.scalafmt.interfaces.ScalafmtReporter
 class ScalafmtSbtReporter(
     log: Logger,
     out: OutputStreamWriter,
-    detailedErrorEnabled: Boolean
+    errorHandling: ErrorHandling
 ) extends ScalafmtReporter {
   import ScalafmtSbtReporter._
 
@@ -23,25 +23,31 @@ class ScalafmtSbtReporter(
     error(file, null, e)
 
   override def error(file: Path, message: String, e: Throwable): Unit = {
-    def getMessage() = {
+    def getMessage(toThrow: Boolean) = {
       val res = new StringWriter()
-      res.write("scalafmt: ")
-      res.write(Option(message).getOrElse("failed"))
+      if (toThrow) res.write("scalafmt: ")
+      val nestedMessage = if (e == null) None else Option(e.getMessage)
+      val messageOpt = Option(message).orElse(nestedMessage)
+      res.write(messageOpt.getOrElse("failed"))
       res.write(" [")
       res.write(file.toString)
       res.write(']')
-      if (null != e) {
-        if (!detailedErrorEnabled)
-          Option(e.getMessage).foreach { x =>
-            res.write(" ")
-            res.write(x)
-          }
+      if (null != e && !toThrow) {
+        if (errorHandling.detailedErrorEnabled)
+          e.printStackTrace(new PrintWriter(res))
+        else if (messageOpt ne nestedMessage) nestedMessage.foreach { x =>
+          res.write(": ")
+          res.write(x)
+        }
       }
       res.toString
     }
 
-    val cause = if (detailedErrorEnabled) e else null
-    throw new ScalafmtSbtError(getMessage(), cause)
+    if (errorHandling.logOnEachError) log.error(getMessage(false))
+    else if (errorHandling.failOnErrors) {
+      val cause = if (errorHandling.detailedErrorEnabled) e else null
+      throw new ScalafmtSbtError(getMessage(true), cause)
+    }
   }
 
   override def excluded(file: Path): Unit =
@@ -57,6 +63,6 @@ class ScalafmtSbtReporter(
 object ScalafmtSbtReporter {
 
   private class ScalafmtSbtError(message: String, cause: Throwable)
-      extends RuntimeException(message, cause)
+      extends RuntimeException(message, cause, true, cause != null)
 
 }

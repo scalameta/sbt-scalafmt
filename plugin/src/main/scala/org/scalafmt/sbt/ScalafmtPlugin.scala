@@ -71,6 +71,12 @@ object ScalafmtPlugin extends AutoPlugin {
     val scalafmtFilter = settingKey[String](
       "File filtering mode when running scalafmt."
     )
+    val scalafmtLogOnEachError = settingKey[Boolean](
+      "Enables logging on an error."
+    )
+    val scalafmtFailOnErrors = settingKey[Boolean](
+      "Controls whether to fail in case of formatting errors."
+    )
   }
 
   import autoImport._
@@ -127,13 +133,13 @@ object ScalafmtPlugin extends AutoPlugin {
       resolvers: Seq[Resolver],
       currentProject: ResolvedProject,
       filterMode: String,
-      detailedErrorEnabled: Boolean
+      errorHandling: ErrorHandling
   ) {
     private val log = taskStreams.log
     private val reporter = new ScalafmtSbtReporter(
       log,
       new OutputStreamWriter(taskStreams.binary()),
-      detailedErrorEnabled
+      errorHandling
     )
 
     private val scalafmtSession = {
@@ -179,18 +185,28 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def withFormattedSources[T](sources: Seq[File])(
         onFormat: (File, Input, Output) => T
-    ): Seq[Option[T]] =
-      sources.map { file =>
+    ): Seq[Option[T]] = {
+      val res = sources.map { file =>
         val path = file.toPath.toAbsolutePath
         Try(IO.read(file)) match {
           case Failure(x) =>
             reporter.error(path, "Failed to read", x)
             None
           case Success(x) =>
-            val output = scalafmtSession.format(path, x)
-            Some(onFormat(file, x, output))
+            val output = scalafmtSession.formatOrError(path, x)
+            /* no need to report on exception since for all errors
+             * reporter.error would have been called already */
+            Option(output.value).map(o => onFormat(file, x, o))
         }
       }
+      val bad = res.count(_ eq None)
+      if (bad != 0) {
+        val err = s"scalafmt: failed for $bad sources"
+        if (errorHandling.failOnErrors) throw new MessageOnlyException(err)
+        log.error(err)
+      }
+      res
+    }
 
     def formatTrackedSources(
         cacheStoreFactory: CacheStoreFactory,
@@ -413,7 +429,11 @@ object ScalafmtPlugin extends AutoPlugin {
         fullResolvers.value,
         thisProject.value,
         scalafmtFilter.value,
-        scalafmtDetailedError.value
+        new ErrorHandling(
+          scalafmtLogOnEachError.value,
+          scalafmtFailOnErrors.value,
+          scalafmtDetailedError.value
+        )
       )
       func(files, session)
     }
@@ -453,7 +473,11 @@ object ScalafmtPlugin extends AutoPlugin {
         fullResolvers.value,
         thisProject.value,
         "",
-        scalafmtDetailedError.value
+        new ErrorHandling(
+          scalafmtLogOnEachError.value,
+          scalafmtFailOnErrors.value,
+          scalafmtDetailedError.value
+        )
       ).formatSources(absFiles)
     }
   )
@@ -480,6 +504,8 @@ object ScalafmtPlugin extends AutoPlugin {
     Seq(
       scalafmtFilter := "",
       scalafmtOnCompile := false,
+      scalafmtLogOnEachError := false,
+      scalafmtFailOnErrors := true,
       scalafmtDetailedError := false
     )
 
