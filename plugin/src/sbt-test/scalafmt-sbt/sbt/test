@@ -176,6 +176,16 @@ $ exec git -C p17 add "src/main/scala/TestBad2.scala"
 # now commit it, no longer modified
 $ exec git -C p17 commit -m 'added TestBad2.scala'
 > p17/scalafmtCheck
+# don't filter but fail after all errors
+> set p17/scalafmtFilter := ("")
+$ copy-file changes/invalid.scala p17/src/main/scala/TestInvalid1.scala
+$ copy-file changes/invalid.scala p17/src/main/scala/TestInvalid2.scala
+-> p17/scalafmt
+# fail after all errors
+> set p17/scalafmtLogOnEachError := true
+-> p17/scalafmt
+> set p17/scalafmtFailOnErrors := false
+> p17/scalafmt
 
 $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
