@@ -124,7 +124,8 @@ object ScalafmtPlugin extends AutoPlugin {
     override def trace(t: => Throwable): Unit = log.trace(t)
     override def success(message: => String): Unit = success(message)
     override def log(level: Level.Value, message: => String): Unit =
-      log.log(level, "scalafmt: " + message)
+      log.log(level, getMessage(message))
+    def getMessage(message: String): String = "scalafmt: " + message
   }
 
   private class FormatSession(
@@ -135,7 +136,7 @@ object ScalafmtPlugin extends AutoPlugin {
       filterMode: String,
       errorHandling: ErrorHandling
   ) {
-    private val log = taskStreams.log
+    private val log = new ScalafmtLogger(taskStreams.log)
     private val reporter = new ScalafmtSbtReporter(
       log,
       new OutputStreamWriter(taskStreams.binary()),
@@ -201,9 +202,9 @@ object ScalafmtPlugin extends AutoPlugin {
       }
       val bad = res.count(_ eq None)
       if (bad != 0) {
-        val err = s"scalafmt: failed for $bad sources"
-        if (errorHandling.failOnErrors) throw new MessageOnlyException(err)
-        log.error(err)
+        val err = s"failed for $bad sources"
+        if (!errorHandling.failOnErrors) log.error(err)
+        else throw new MessageOnlyException(log.getMessage(err))
       }
       res
     }
