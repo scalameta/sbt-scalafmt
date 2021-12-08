@@ -172,16 +172,26 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def getFileFilter(): Path => Boolean = {
       def gitOps = GitOps.FactoryImpl(AbsoluteFile(currentProject.base.toPath))
-      val files =
-        if (filterMode == FilterMode.diffDirty)
-          gitOps.status()
-        else if (filterMode.startsWith(FilterMode.diffRefPrefix))
-          gitOps.diff(filterMode.substring(FilterMode.diffRefPrefix.length))
-        else if (scalafmtSession.isGitOnly)
-          gitOps.lsTree()
-        else null
-      if (files eq null) _ => true
-      else FileOps.getFileMatcher(files.map(_.path))
+      def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) =
+        Try(getFiles) match {
+          case Failure(x) =>
+            log.error(s"format all files; [git $gitCmd]: ${x.getMessage}")
+            _: Path => true
+          case Success(x) =>
+            log.debug(s"considering ${x.length} files [git $gitCmd]")
+            FileOps.getFileMatcher(x.map(_.path))
+        }
+      if (filterMode == FilterMode.diffDirty)
+        getFromFiles(gitOps.status(), "status")
+      else if (filterMode.startsWith(FilterMode.diffRefPrefix)) {
+        val branch = filterMode.substring(FilterMode.diffRefPrefix.length)
+        getFromFiles(gitOps.diff(branch), s"diff $branch")
+      } else if (scalafmtSession.isGitOnly)
+        getFromFiles(gitOps.lsTree(), "ls-files")
+      else {
+        log.debug("considering all files (no git)")
+        _ => true
+      }
     }
 
     private def withFormattedSources[T](sources: Seq[File])(
