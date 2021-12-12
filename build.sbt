@@ -31,10 +31,11 @@ inThisBuild(
     publishArtifact in packageSrc := sys.env.contains("CI")
   )
 )
-onLoadMessage := s"Welcome to sbt-scalafmt ${version.value}"
 skip in publish := true
 
 val scalafmtVersion = "3.2.1"
+onLoadMessage := s"Welcome to sbt-scalafmt ${version.value} (scalafmt ${scalafmtVersion})"
+
 lazy val plugin = project
   .enablePlugins(SbtPlugin)
   .settings(
