@@ -194,28 +194,36 @@ object ScalafmtPlugin extends AutoPlugin {
       }
     }
 
-    private def withFormattedSources[T](sources: Seq[File])(
-        onFormat: (File, Input, Output) => T
-    ): Seq[Option[T]] = {
-      val res = sources.map { file =>
+    private def withFormattedSources[T](initial: T, sources: Seq[File])(
+        onFormat: (T, File, Input, Output) => T
+    ): T = {
+      var res = initial
+      var good = 0
+      var bad = 0
+      sources.foreach { file =>
         val path = file.toPath.toAbsolutePath
         Try(IO.read(file)) match {
           case Failure(x) =>
             reporter.error(path, "Failed to read", x)
-            None
+            bad += 1
           case Success(x) =>
             val output = scalafmtSession.formatOrError(path, x)
             /* no need to report on exception since for all errors
              * reporter.error would have been called already */
-            Option(output.value).map(o => onFormat(file, x, o))
+            Option(output.value) match {
+              case None => bad += 1
+              case Some(o) =>
+                if (x == o) good += 1
+                else res = onFormat(res, file, x, o)
+            }
         }
       }
-      val bad = res.count(_ eq None)
       if (bad != 0) {
         val err = s"failed for $bad sources"
         if (!errorHandling.failOnErrors) log.error(err)
         else throw new MessageOnlyException(log.getMessage(err))
       }
+      log.debug(s"Unchanged $good Scala sources")
       res
     }
 
@@ -245,19 +253,11 @@ object ScalafmtPlugin extends AutoPlugin {
     private def formatFilteredSources(sources: Seq[File]): Unit = {
       if (sources.nonEmpty)
         log.info(s"Formatting ${sources.length} Scala sources...")
-      val cnt =
-        withFormattedSources(sources) { (file, input, output) =>
-          if (input != output) {
-            IO.write(file, output)
-            1
-          } else {
-            0
-          }
-        }.flatten.sum
-
-      if (cnt > 1) {
-        log.info(s"Reformatted $cnt Scala sources")
+      val cnt = withFormattedSources(0, sources) { (res, file, _, output) =>
+        IO.write(file, output)
+        res + 1
       }
+      if (cnt > 0) log.info(s"Reformatted $cnt Scala sources")
     }
 
     def checkTrackedSources(
@@ -292,15 +292,13 @@ object ScalafmtPlugin extends AutoPlugin {
       if (sources.nonEmpty) {
         log.info(s"Checking ${sources.size} Scala sources...")
       }
-      val unformatted =
-        withFormattedSources(sources) { (file, input, output) =>
-          val diff = input != output
-          if (diff) {
-            warnBadFormat(file)
-            Some(file)
-          } else None
-        }.flatten.flatten.toSet
-      ScalafmtAnalysis(failedScalafmtCheck = unformatted)
+      val unformatted = Set.newBuilder[File]
+      withFormattedSources(Unit, sources) { (_, file, input, output) =>
+        warnBadFormat(file)
+        unformatted += file
+        Unit
+      }
+      ScalafmtAnalysis(failedScalafmtCheck = unformatted.result())
     }
 
     // This tracks
