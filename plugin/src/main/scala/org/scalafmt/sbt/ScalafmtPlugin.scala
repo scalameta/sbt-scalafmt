@@ -102,7 +102,7 @@ object ScalafmtPlugin extends AutoPlugin {
       if (f.exists()) {
         f.toPath
       } else {
-        throw new MessageOnlyException(s"File not exists: ${f.toPath}")
+        throw messageException(s"File not exists: ${f.toPath}")
       }
     }
   private val sbtConfig = scalaConfig
@@ -120,12 +120,16 @@ object ScalafmtPlugin extends AutoPlugin {
     val diffRefPrefix = "diff-ref="
   }
 
+  private def getLogMessage(message: String): String = "scalafmt: " + message
+
+  private def messageException(message: String): RuntimeException =
+    new MessageOnlyException(getLogMessage(message))
+
   private class ScalafmtLogger(log: Logger) extends Logger {
     override def trace(t: => Throwable): Unit = log.trace(t)
     override def success(message: => String): Unit = success(message)
     override def log(level: Level.Value, message: => String): Unit =
-      log.log(level, getMessage(message))
-    def getMessage(message: String): String = "scalafmt: " + message
+      log.log(level, getLogMessage(message))
   }
 
   private class FormatSession(
@@ -156,7 +160,7 @@ object ScalafmtPlugin extends AutoPlugin {
           .withMavenRepositories(repositories: _*)
           .createSession(config.toAbsolutePath)
       if (scalafmtSession == null)
-        throw new MessageOnlyException(
+        throw messageException(
           "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
         )
       scalafmtSession
@@ -226,7 +230,7 @@ object ScalafmtPlugin extends AutoPlugin {
       if (bad != 0) {
         val err = s"failed for $bad sources"
         if (!errorHandling.failOnErrors) log.error(err)
-        else throw new MessageOnlyException(log.getMessage(err))
+        else throw messageException(err)
       }
       log.debug(s"Unchanged $good Scala sources")
       res
@@ -343,12 +347,9 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
-    val failureCount = analysis.failedScalafmtCheck.size
-    if (failureCount > 0) {
-      throw new MessageOnlyException(
-        s"${failureCount} files must be formatted"
-      )
-    }
+    val failed = analysis.failedScalafmtCheck
+    if (failed.nonEmpty)
+      throw messageException(s"${failed.size} files must be formatted")
   }
 
   private lazy val sbtSources = Def.task {
