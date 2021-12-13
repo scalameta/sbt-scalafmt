@@ -41,6 +41,7 @@ lazy val plugin = project
   .settings(
     moduleName := "sbt-scalafmt",
     libraryDependencies ++= List(
+      "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
       "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion,
       "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion
     ),
