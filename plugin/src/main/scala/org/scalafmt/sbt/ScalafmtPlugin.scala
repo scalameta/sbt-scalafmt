@@ -77,6 +77,9 @@ object ScalafmtPlugin extends AutoPlugin {
     val scalafmtFailOnErrors = settingKey[Boolean](
       "Controls whether to fail in case of formatting errors."
     )
+    val scalafmtPrintDiff = settingKey[Boolean](
+      "Enables full diff output when running check."
+    )
   }
 
   import autoImport._
@@ -306,7 +309,11 @@ object ScalafmtPlugin extends AutoPlugin {
       }
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
-        log.warn(s"$file isn't formatted properly!")
+        val diff = if (errorHandling.printDiff) {
+          DiffUtils.unifiedDiff("/" + asRelative(file).getPath, input, output)
+        } else ""
+        val suffix = if (diff.isEmpty) "" else '\n' + diff
+        log.warn(s"$file isn't formatted properly!$suffix")
         unformatted += file
         Unit
       }
@@ -448,6 +455,7 @@ object ScalafmtPlugin extends AutoPlugin {
         thisProject.value,
         scalafmtFilter.value,
         new ErrorHandling(
+          scalafmtPrintDiff.value,
           scalafmtLogOnEachError.value,
           scalafmtFailOnErrors.value,
           scalafmtDetailedError.value
@@ -492,6 +500,7 @@ object ScalafmtPlugin extends AutoPlugin {
         thisProject.value,
         "",
         new ErrorHandling(
+          scalafmtPrintDiff.value,
           scalafmtLogOnEachError.value,
           scalafmtFailOnErrors.value,
           scalafmtDetailedError.value
@@ -524,6 +533,7 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtOnCompile := false,
       scalafmtLogOnEachError := false,
       scalafmtFailOnErrors := true,
+      scalafmtPrintDiff := false,
       scalafmtDetailedError := false
     )
 
