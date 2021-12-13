@@ -162,6 +162,11 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtSession
     }
 
+    @inline private def baseDir: File = currentProject.base
+
+    @inline private def asRelative(file: File): File =
+      file.relativeTo(baseDir).getOrElse(file)
+
     private def filterFiles(sources: Seq[File]): Seq[File] = {
       val filter = getFileFilter()
       sources.distinct.filter { file =>
@@ -171,7 +176,7 @@ object ScalafmtPlugin extends AutoPlugin {
     }
 
     private def getFileFilter(): Path => Boolean = {
-      def gitOps = GitOps.FactoryImpl(AbsoluteFile(currentProject.base.toPath))
+      def gitOps = GitOps.FactoryImpl(AbsoluteFile(baseDir.toPath))
       def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) =
         Try(getFiles) match {
           case Failure(x) =>
@@ -273,7 +278,13 @@ object ScalafmtPlugin extends AutoPlugin {
           val prevFailed: Set[File] =
             if (configChanged) Set.empty
             else prev.failedScalafmtCheck & outDiff.unmodified
-          prevFailed.foreach(warnBadFormat)
+          if (prevFailed.nonEmpty) {
+            val files: Seq[String] =
+              prevFailed.map(asRelative(_).toString)(collection.breakOut)
+            val prefix =
+              s"$baseDir: ${files.length} files aren't formatted properly:\n"
+            log.warn(files.sorted.mkString(prefix, "\n", ""))
+          }
           val result =
             checkFilteredSources(filesToCheck)
           prev.copy(
@@ -281,9 +292,6 @@ object ScalafmtPlugin extends AutoPlugin {
           )
       }
     }
-
-    private def warnBadFormat(file: File): Unit =
-      log.warn(s"${file.toString} isn't formatted properly!")
 
     def checkSources(sources: Seq[File]): ScalafmtAnalysis =
       checkFilteredSources(filterFiles(sources))
@@ -294,7 +302,7 @@ object ScalafmtPlugin extends AutoPlugin {
       }
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
-        warnBadFormat(file)
+        log.warn(s"$file isn't formatted properly!")
         unformatted += file
         Unit
       }
