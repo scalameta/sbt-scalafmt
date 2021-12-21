@@ -142,6 +142,10 @@ $ delete p17/src/main/scala/Test2.scala
 $ copy-file changes/good.scala p17/src/main/scala/Test2.scala
 > p17/scalafmtCheck
 > p17/scalafmt
+######## formatting other config should not invalidate the cache
+$ copy-file changes/bad.scala p17/src/test/scala/Test3.scala
+> p17/test:scalafmt
+> p17/scalafmtCheck
 
 # set up git
 $ exec git init -b main p18
