@@ -142,50 +142,49 @@ $ delete p17/src/main/scala/Test2.scala
 $ copy-file changes/good.scala p17/src/main/scala/Test2.scala
 > p17/scalafmtCheck
 > p17/scalafmt
-$ delete p17/src/main/scala/Test.scala
 
 # set up git
-$ exec git init -b main p17
+$ exec git init -b main p18
 # filter dirty files
-> set p17/scalafmtFilter := ("diff-dirty")
+> set p18/scalafmtFilter := ("diff-dirty")
 # dirty but should succeed
-$ copy-file changes/good.scala p17/src/main/scala/TestGood.scala
-> p17/scalafmtCheck
+$ copy-file changes/good.scala p18/src/main/scala/TestGood.scala
+> p18/scalafmtCheck
 # dirty and should fail
-$ copy-file changes/bad.scala p17/src/main/scala/TestBad.scala
--> p17/scalafmtCheck
+$ copy-file changes/bad.scala p18/src/main/scala/TestBad.scala
+-> p18/scalafmtCheck
 # tracked yet still fail
-$ exec git -C p17 add "src/main/scala/TestBad.scala"
--> p17/scalafmtCheck
+$ exec git -C p18 add "src/main/scala/TestBad.scala"
+-> p18/scalafmtCheck
 # no longer dirty, should succeed
-$ exec git -C p17 commit -m 'added TestBad.scala'
-> p17/scalafmtCheck
+$ exec git -C p18 commit -m 'added TestBad.scala'
+> p18/scalafmtCheck
 # filter tracked modifications since branch=main
-> set p17/scalafmtFilter := ("diff-ref=main")
+> set p18/scalafmtFilter := ("diff-ref=main")
 # TestBad is checked in, TestGood not tracked
-> p17/scalafmtCheck
+> p18/scalafmtCheck
 # copy but unchanged
-$ copy-file changes/bad.scala p17/src/main/scala/TestBad.scala
-> p17/scalafmtCheck
+$ copy-file changes/bad.scala p18/src/main/scala/TestBad.scala
+> p18/scalafmtCheck
 # copy to new file but untracked
-$ copy-file changes/bad.scala p17/src/main/scala/TestBad2.scala
-> p17/scalafmtCheck
+$ copy-file changes/bad.scala p18/src/main/scala/TestBad2.scala
+> p18/scalafmtCheck
 # now track it
-$ exec git -C p17 add "src/main/scala/TestBad2.scala"
--> p17/scalafmtCheck
+$ exec git -C p18 add "src/main/scala/TestBad2.scala"
+-> p18/scalafmtCheck
 # now commit it, no longer modified
-$ exec git -C p17 commit -m 'added TestBad2.scala'
-> p17/scalafmtCheck
+$ exec git -C p18 commit -m 'added TestBad2.scala'
+> p18/scalafmtCheck
 # don't filter but fail after all errors
-> set p17/scalafmtFilter := ("")
-$ copy-file changes/invalid.scala p17/src/main/scala/TestInvalid1.scala
-$ copy-file changes/invalid.scala p17/src/main/scala/TestInvalid2.scala
--> p17/scalafmt
+> set p18/scalafmtFilter := ("")
+$ copy-file changes/invalid.scala p18/src/main/scala/TestInvalid1.scala
+$ copy-file changes/invalid.scala p18/src/main/scala/TestInvalid2.scala
+-> p18/scalafmt
 # fail after all errors
-> set p17/scalafmtLogOnEachError := true
--> p17/scalafmt
-> set p17/scalafmtFailOnErrors := false
-> p17/scalafmt
+> set p18/scalafmtLogOnEachError := true
+-> p18/scalafmt
+> set p18/scalafmtFailOnErrors := false
+> p18/scalafmt
 
 $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
