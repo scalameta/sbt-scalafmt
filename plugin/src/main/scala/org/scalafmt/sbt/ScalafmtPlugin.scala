@@ -121,6 +121,7 @@ object ScalafmtPlugin extends AutoPlugin {
   private object FilterMode {
     val diffDirty = "diff-dirty"
     val diffRefPrefix = "diff-ref="
+    val none = "none"
   }
 
   private def getLogMessage(message: String): String = "scalafmt: " + message
@@ -199,7 +200,7 @@ object ScalafmtPlugin extends AutoPlugin {
       else if (filterMode.startsWith(FilterMode.diffRefPrefix)) {
         val branch = filterMode.substring(FilterMode.diffRefPrefix.length)
         getFromFiles(gitOps.diff(branch), s"diff $branch")
-      } else if (scalafmtSession.isGitOnly)
+      } else if (filterMode != FilterMode.none && scalafmtSession.isGitOnly)
         getFromFiles(gitOps.lsTree(), "ls-files")
       else {
         log.debug("considering all files (no git)")
