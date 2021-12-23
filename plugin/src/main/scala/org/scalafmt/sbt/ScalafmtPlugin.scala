@@ -138,6 +138,7 @@ object ScalafmtPlugin extends AutoPlugin {
   private class FormatSession(
       config: Path,
       taskStreams: TaskStreams,
+      cacheStoreFactory: CacheStoreFactory,
       resolvers: Seq[Resolver],
       currentProject: ResolvedProject,
       filterMode: String,
@@ -239,10 +240,7 @@ object ScalafmtPlugin extends AutoPlugin {
       res
     }
 
-    def formatTrackedSources(
-        cacheStoreFactory: CacheStoreFactory,
-        sources: Seq[File]
-    ): Unit = {
+    def formatTrackedSources(sources: Seq[File]): Unit = {
       val filteredSources = filterFiles(sources)
       trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
@@ -272,10 +270,7 @@ object ScalafmtPlugin extends AutoPlugin {
       if (cnt > 0) log.info(s"Reformatted $cnt Scala sources")
     }
 
-    def checkTrackedSources(
-        cacheStoreFactory: CacheStoreFactory,
-        sources: Seq[File]
-    ): ScalafmtAnalysis = {
+    def checkTrackedSources(sources: Seq[File]): ScalafmtAnalysis = {
       val filteredSources = filterFiles(sources)
       trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
@@ -393,15 +388,12 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private def scalafmtTask(sources: Seq[File], session: FormatSession) =
     Def.task {
-      session.formatTrackedSources(streams.value.cacheStoreFactory, sources)
+      session.formatTrackedSources(sources)
     } tag (ScalafmtTagPack: _*)
 
   private def scalafmtCheckTask(sources: Seq[File], session: FormatSession) =
     Def.task {
-      val analysis = session.checkTrackedSources(
-        (scalafmt / streams).value.cacheStoreFactory,
-        sources
-      )
+      val analysis = session.checkTrackedSources(sources)
       throwOnFailure(analysis)
     } tag (ScalafmtTagPack: _*)
 
@@ -451,6 +443,7 @@ object ScalafmtPlugin extends AutoPlugin {
       val session = new FormatSession(
         config,
         streams.value,
+        (scalafmt / streams).value.cacheStoreFactory,
         fullResolvers.value,
         thisProject.value,
         scalafmtFilter.value,
@@ -496,6 +489,7 @@ object ScalafmtPlugin extends AutoPlugin {
       new FormatSession(
         scalaConfig.value,
         streams.value,
+        (scalafmt / streams).value.cacheStoreFactory,
         fullResolvers.value,
         thisProject.value,
         "",
