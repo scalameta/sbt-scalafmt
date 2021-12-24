@@ -171,10 +171,10 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtSession
     }
 
-    private lazy val baseDir: File = currentProject.base.getCanonicalFile
+    private lazy val baseDir: Path = currentProject.base.getCanonicalFile.toPath
 
-    @inline private def asRelative(file: File): File =
-      file.relativeTo(baseDir).getOrElse(file)
+    @inline private def asRelative(file: File): String =
+      baseDir.relativize(file.getCanonicalFile.toPath).toString
 
     private def filterFiles(sources: Seq[File]): Seq[File] = {
       val filter = getFileFilter()
@@ -185,7 +185,7 @@ object ScalafmtPlugin extends AutoPlugin {
     }
 
     private def getFileFilter(): Path => Boolean = {
-      def gitOps = GitOps.FactoryImpl(AbsoluteFile(baseDir.toPath))
+      def gitOps = GitOps.FactoryImpl(AbsoluteFile(baseDir))
       def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) = {
         def gitMessage = s"[git $gitCmd] ($baseDir)"
         Try(getFiles) match {
@@ -286,7 +286,7 @@ object ScalafmtPlugin extends AutoPlugin {
             else prev.failedScalafmtCheck & outDiff.unmodified
           if (prevFailed.nonEmpty) {
             val files: Seq[String] =
-              prevFailed.map(asRelative(_).toString)(collection.breakOut)
+              prevFailed.map(asRelative)(collection.breakOut)
             val prefix =
               s"$baseDir: ${files.length} files aren't formatted properly:\n"
             log.warn(files.sorted.mkString(prefix, "\n", ""))
@@ -310,7 +310,7 @@ object ScalafmtPlugin extends AutoPlugin {
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
         val diff = if (errorHandling.printDiff) {
-          DiffUtils.unifiedDiff("/" + asRelative(file).getPath, input, output)
+          DiffUtils.unifiedDiff("/" + asRelative(file), input, output)
         } else ""
         val suffix = if (diff.isEmpty) "" else '\n' + diff
         log.warn(s"$file isn't formatted properly!$suffix")
