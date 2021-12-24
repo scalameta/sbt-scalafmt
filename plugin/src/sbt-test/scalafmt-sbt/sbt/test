@@ -195,6 +195,15 @@ $ copy-file changes/invalid.scala p18/src/main/scala/TestInvalid2.scala
 > set p18/scalafmtFailOnErrors := false
 > p18/scalafmt
 
+# set up git
+$ exec git init -b main p19
+$ copy-file changes/good.scala p19/jvm/src/main/scala/TestGood.scala
+$ exec git -C p19 add "jvm/src/main/scala/TestGood.scala"
+> p19/scalafmtCheck
+$ copy-file changes/invalid.scala p19/shared/src/main/scala/TestInvalid1.scala
+$ exec git -C p19 add "shared/src/main/scala/TestInvalid1.scala"
+> p19/scalafmtCheck
+
 $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
 > scalafmtSbt
