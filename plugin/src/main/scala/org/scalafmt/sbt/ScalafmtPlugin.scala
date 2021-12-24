@@ -186,15 +186,18 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def getFileFilter(): Path => Boolean = {
       def gitOps = GitOps.FactoryImpl(AbsoluteFile(baseDir.toPath))
-      def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) =
+      def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) = {
+        def gitMessage = s"[git $gitCmd] ($baseDir)"
         Try(getFiles) match {
           case Failure(x) =>
-            log.error(s"format all files; [git $gitCmd]: ${x.getMessage}")
+            log.error(s"format all files; $gitMessage: ${x.getMessage}")
             _: Path => true
           case Success(x) =>
-            log.debug(s"considering ${x.length} files [git $gitCmd]")
+            log.debug(s"considering ${x.length} files $gitMessage")
             FileOps.getFileMatcher(x.map(_.path))
         }
+      }
+
       if (filterMode == FilterMode.diffDirty)
         getFromFiles(gitOps.status(), "status")
       else if (filterMode.startsWith(FilterMode.diffRefPrefix)) {
@@ -263,7 +266,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def formatFilteredSources(sources: Seq[File]): Unit = {
       if (sources.nonEmpty)
-        log.info(s"Formatting ${sources.length} Scala sources...")
+        log.info(s"Formatting ${sources.length} Scala sources ($baseDir)...")
       val cnt = withFormattedSources(0, sources) { (res, file, _, output) =>
         IO.write(file, output)
         res + 1
@@ -271,9 +274,9 @@ object ScalafmtPlugin extends AutoPlugin {
       if (cnt > 0) log.info(s"Reformatted $cnt Scala sources")
     }
 
-    def checkTrackedSources(sources: Seq[File]): ScalafmtAnalysis = {
+    def checkTrackedSources(sources: Seq[File]): Unit = {
       val filteredSources = filterFiles(sources)
-      trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
+      val result = trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
           val filesToCheck: Seq[File] =
             if (configChanged) filteredSources
@@ -294,14 +297,15 @@ object ScalafmtPlugin extends AutoPlugin {
             failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
           )
       }
+      throwOnFailure(result)
     }
 
-    def checkSources(sources: Seq[File]): ScalafmtAnalysis =
-      checkFilteredSources(filterFiles(sources))
+    def checkSources(sources: Seq[File]): Unit =
+      throwOnFailure(checkFilteredSources(filterFiles(sources)))
 
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
       if (sources.nonEmpty) {
-        log.info(s"Checking ${sources.size} Scala sources...")
+        log.info(s"Checking ${sources.size} Scala sources ($baseDir)...")
       }
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
@@ -347,12 +351,14 @@ object ScalafmtPlugin extends AutoPlugin {
       }
       prevTracker(())
     }
-  }
 
-  private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
-    val failed = analysis.failedScalafmtCheck
-    if (failed.nonEmpty)
-      throw messageException(s"${failed.size} files must be formatted")
+    private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
+      val failed = analysis.failedScalafmtCheck
+      if (failed.nonEmpty)
+        throw messageException(
+          s"${failed.size} files must be formatted ($baseDir)"
+        )
+    }
   }
 
   private lazy val sbtSources = Def.task {
@@ -394,8 +400,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private def scalafmtCheckTask(sources: Seq[File], session: FormatSession) =
     Def.task {
-      val analysis = session.checkTrackedSources(sources)
-      throwOnFailure(analysis)
+      session.checkTrackedSources(sources)
     } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
@@ -416,7 +421,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       session: FormatSession
   ) = Def.task {
-    throwOnFailure(session.checkSources(sources))
+    session.checkSources(sources)
   } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSbtTasks(
