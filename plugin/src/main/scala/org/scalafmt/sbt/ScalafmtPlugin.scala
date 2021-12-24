@@ -266,7 +266,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def formatFilteredSources(sources: Seq[File]): Unit = {
       if (sources.nonEmpty)
-        log.info(s"Formatting ${sources.length} Scala sources...")
+        log.info(s"Formatting ${sources.length} Scala sources ($baseDir)...")
       val cnt = withFormattedSources(0, sources) { (res, file, _, output) =>
         IO.write(file, output)
         res + 1
@@ -274,9 +274,9 @@ object ScalafmtPlugin extends AutoPlugin {
       if (cnt > 0) log.info(s"Reformatted $cnt Scala sources")
     }
 
-    def checkTrackedSources(sources: Seq[File]): ScalafmtAnalysis = {
+    def checkTrackedSources(sources: Seq[File]): Unit = {
       val filteredSources = filterFiles(sources)
-      trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
+      val result = trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
           val filesToCheck: Seq[File] =
             if (configChanged) filteredSources
@@ -297,10 +297,11 @@ object ScalafmtPlugin extends AutoPlugin {
             failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
           )
       }
+      throwOnFailure(result)
     }
 
-    def checkSources(sources: Seq[File]): ScalafmtAnalysis =
-      checkFilteredSources(filterFiles(sources))
+    def checkSources(sources: Seq[File]): Unit =
+      throwOnFailure(checkFilteredSources(filterFiles(sources)))
 
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
       if (sources.nonEmpty) {
@@ -350,12 +351,14 @@ object ScalafmtPlugin extends AutoPlugin {
       }
       prevTracker(())
     }
-  }
 
-  private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
-    val failed = analysis.failedScalafmtCheck
-    if (failed.nonEmpty)
-      throw messageException(s"${failed.size} files must be formatted")
+    private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
+      val failed = analysis.failedScalafmtCheck
+      if (failed.nonEmpty)
+        throw messageException(
+          s"${failed.size} files must be formatted ($baseDir)"
+        )
+    }
   }
 
   private lazy val sbtSources = Def.task {
@@ -397,8 +400,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private def scalafmtCheckTask(sources: Seq[File], session: FormatSession) =
     Def.task {
-      val analysis = session.checkTrackedSources(sources)
-      throwOnFailure(analysis)
+      session.checkTrackedSources(sources)
     } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
@@ -419,7 +421,7 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       session: FormatSession
   ) = Def.task {
-    throwOnFailure(session.checkSources(sources))
+    session.checkSources(sources)
   } tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSbtTasks(
