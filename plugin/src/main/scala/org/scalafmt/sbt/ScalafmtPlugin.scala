@@ -245,12 +245,12 @@ object ScalafmtPlugin extends AutoPlugin {
       val filteredSources = filterFiles(sources)
       trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
-          val updatedOrAdded = outDiff.modified & outDiff.checked
           val filesToFormat: Seq[File] =
             if (configChanged) filteredSources
             else {
               // in addition to the detected changes, process files that failed scalafmtCheck
               // we can ignore the succeeded files because, they don't require reformatting
+              val updatedOrAdded = outDiff.modified & outDiff.checked
               (updatedOrAdded | prev.failedScalafmtCheck).toSeq
             }
           formatFilteredSources(filesToFormat)
@@ -275,9 +275,9 @@ object ScalafmtPlugin extends AutoPlugin {
       val filteredSources = filterFiles(sources)
       trackSourcesAndConfig(cacheStoreFactory, filteredSources) {
         (outDiff, configChanged, prev) =>
-          val updatedOrAdded = outDiff.modified & outDiff.checked
           val filesToCheck: Seq[File] =
-            if (configChanged) filteredSources else updatedOrAdded.toSeq
+            if (configChanged) filteredSources
+            else (outDiff.modified & outDiff.checked).toSeq
           val prevFailed: Set[File] =
             if (configChanged) Set.empty
             else prev.failedScalafmtCheck & outDiff.unmodified
