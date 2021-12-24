@@ -1,5 +1,15 @@
+def parseTagVersion: String = {
+  import scala.sys.process._
+  // drop `v` prefix
+  "git describe --abbrev=0 --tags".!!.drop(1).trim
+}
+
 inThisBuild(
   List(
+    version ~= { dynVer =>
+      if (System.getenv("CI") != null) dynVer
+      else s"$parseTagVersion-SNAPSHOT" // only for local publishing
+    },
     organization := "org.scalameta",
     homepage := Some(url("https://github.com/scalameta/sbt-scalafmt")),
     licenses := Seq(
