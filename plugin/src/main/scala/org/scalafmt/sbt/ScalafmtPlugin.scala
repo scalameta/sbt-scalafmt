@@ -186,15 +186,18 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def getFileFilter(): Path => Boolean = {
       def gitOps = GitOps.FactoryImpl(AbsoluteFile(baseDir.toPath))
-      def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) =
+      def getFromFiles(getFiles: => Seq[AbsoluteFile], gitCmd: => String) = {
+        def gitMessage = s"[git $gitCmd] ($baseDir)"
         Try(getFiles) match {
           case Failure(x) =>
-            log.error(s"format all files; [git $gitCmd]: ${x.getMessage}")
+            log.error(s"format all files; $gitMessage: ${x.getMessage}")
             _: Path => true
           case Success(x) =>
-            log.debug(s"considering ${x.length} files [git $gitCmd]")
+            log.debug(s"considering ${x.length} files $gitMessage")
             FileOps.getFileMatcher(x.map(_.path))
         }
+      }
+
       if (filterMode == FilterMode.diffDirty)
         getFromFiles(gitOps.status(), "status")
       else if (filterMode.startsWith(FilterMode.diffRefPrefix)) {
@@ -301,7 +304,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
       if (sources.nonEmpty) {
-        log.info(s"Checking ${sources.size} Scala sources...")
+        log.info(s"Checking ${sources.size} Scala sources ($baseDir)...")
       }
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
