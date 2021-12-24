@@ -171,15 +171,15 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtSession
     }
 
-    @inline private def baseDir: File = currentProject.base
+    private lazy val baseDir: File = currentProject.base.getCanonicalFile
 
     @inline private def asRelative(file: File): File =
       file.relativeTo(baseDir).getOrElse(file)
 
     private def filterFiles(sources: Seq[File]): Seq[File] = {
       val filter = getFileFilter()
-      sources.distinct.filter { file =>
-        val path = file.toPath.toAbsolutePath
+      sources.map(_.getCanonicalFile).distinct.filter { file =>
+        val path = file.toPath
         scalafmtSession.matchesProjectFilters(path) && filter(path)
       }
     }
