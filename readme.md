@@ -9,9 +9,10 @@ repository see [scalameta/scalafmt](https://github.com/scalameta/scalafmt/).
 
 ### Installation
 
-Add following line into `project/plugins.sbt`
+Add following line into `project/plugins.sbt` (latest version is available next to the
+**maven central** badge above)
 ```sbt
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.3")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % PLUGIN_VERSION)
 ```
 
 ### [User documentation](https://scalameta.org/scalafmt/)
