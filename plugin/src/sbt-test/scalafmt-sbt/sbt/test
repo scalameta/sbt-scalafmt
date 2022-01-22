@@ -204,6 +204,17 @@ $ copy-file changes/invalid.scala p19/shared/src/main/scala/TestInvalid1.scala
 $ exec git -C p19 add "shared/src/main/scala/TestInvalid1.scala"
 -> p19/scalafmtCheck
 
+# needs git but do not set it up
+$ copy-file changes/good.scala p20/src/main/scala/TestGood.scala
+> p20/scalafmtCheck
+$ copy-file changes/invalid.scala p20/src/main/scala/TestInvalid1.scala
+-> p20/scalafmtCheck
+# now set it up
+$ exec git init -b main p20
+> p20/scalafmtCheck
+$ exec git -C p20 add "src/main/scala/TestInvalid1.scala"
+-> p20/scalafmtCheck
+
 $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
 > scalafmtSbt
