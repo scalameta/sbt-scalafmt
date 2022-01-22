@@ -192,7 +192,7 @@ object ScalafmtPlugin extends AutoPlugin {
         def gitMessage = s"[git $gitCmd] ($baseDir)"
         Try(getFiles) match {
           case Failure(x) =>
-            log.error(s"format all files; $gitMessage: ${x.getMessage}")
+            log.warn(s"format all files; $gitMessage: ${x.getMessage}")
             _: Path => true
           case Success(x) =>
             log.debug(s"considering ${x.length} files $gitMessage")

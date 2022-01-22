@@ -92,6 +92,10 @@ lazy val p19 = project
     Compile / unmanagedSourceDirectories += baseDirectory.value / "../shared/src",
     scalaVersion := "2.12.1"
   )
+lazy val p20 = project.settings(
+  scalafmtConfig := file(".scalafmt20.conf"),
+  scalaVersion := "2.12.1"
+)
 
 def assertContentsEqual(file: File, expected: String): Unit = {
   val obtained =
