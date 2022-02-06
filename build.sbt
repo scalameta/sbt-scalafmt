@@ -43,7 +43,7 @@ inThisBuild(
 )
 skip in publish := true
 
-val scalafmtVersion = "3.4.0"
+val scalafmtVersion = "3.4.1"
 onLoadMessage := s"Welcome to sbt-scalafmt ${version.value} (scalafmt ${scalafmtVersion})"
 
 lazy val plugin = project
