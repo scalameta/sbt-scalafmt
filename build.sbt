@@ -36,7 +36,7 @@ inThisBuild(
       )
     ),
     resolvers += Resolver.sonatypeRepo("public"),
-    scalaVersion := "2.12.15",
+    scalaVersion := "2.12.16",
     publishArtifact in packageDoc := sys.env.contains("CI"),
     publishArtifact in packageSrc := sys.env.contains("CI")
   )
