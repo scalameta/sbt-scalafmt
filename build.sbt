@@ -36,14 +36,14 @@ inThisBuild(
       )
     ),
     resolvers += Resolver.sonatypeRepo("public"),
-    scalaVersion := "2.13.8",
+    scalaVersion := "2.12.16",
     publishArtifact in packageDoc := sys.env.contains("CI"),
     publishArtifact in packageSrc := sys.env.contains("CI")
   )
 )
 skip in publish := true
 
-val scalafmtVersion = "3.5.7"
+val scalafmtVersion = "3.5.8"
 onLoadMessage := s"Welcome to sbt-scalafmt ${version.value} (scalafmt ${scalafmtVersion})"
 
 lazy val plugin = project
