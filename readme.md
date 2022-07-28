@@ -15,6 +15,11 @@ Add following line into `project/plugins.sbt` (latest version is available next 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % PLUGIN_VERSION)
 ```
 
+If the above does not work, in enterprise environments, try:
+```sbt
+libraryDependencies += "org.scalameta" % "sbt-scalafmt_2.12_1.0" % PLUGIN_VERSION
+```
+
 ### [User documentation](https://scalameta.org/scalafmt/)
 Head over to [the user docs](https://scalameta.org/scalafmt/docs/installation.html#sbt) for instructions on how to install and use scalafmt.
 
