@@ -365,7 +365,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private lazy val sbtSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
-    val thisBase = (thisProject.value).base
+    val thisBase = thisProject.value.base
     val rootSbt =
       BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
     val metabuildSbt =
@@ -377,7 +377,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private lazy val metabuildSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
-    val thisBase = (thisProject.value).base
+    val thisBase = thisProject.value.base
 
     if (rootBase == thisBase) {
       val projectDirectory = BuildPaths.projectStandard(thisBase)
@@ -486,7 +486,7 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) {
-        (scalafmt in resolvedScoped.value.scope)
+        scalafmt in resolvedScoped.value.scope
       } else {
         Def.task(())
       }
