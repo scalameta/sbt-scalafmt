@@ -105,7 +105,7 @@ object ScalafmtPlugin extends AutoPlugin {
       if (f.exists()) {
         f.toPath
       } else {
-        throw messageException(s"File not exists: ${f.toPath}")
+        throw messageException(s"File does not exist: ${f.toPath}")
       }
     }
   private val sbtConfig = scalaConfig
