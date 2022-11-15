@@ -56,7 +56,10 @@ lazy val plugin = project
       "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion
     ),
     scriptedBufferLog := false,
-    scriptedLaunchOpts += s"-Dplugin.version=${version.value}"
+    scriptedLaunchOpts += s"-Dplugin.version=${version.value}",
+    // For compat reasons we have this in here to ensure we are testing against 1.2.8
+    // We honestly probably don't need to, so if this ever causes issues, rip it out.
+    pluginCrossBuild / sbtVersion := "1.2.8"
   )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.
