@@ -15,6 +15,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
+import org.scalafmt.interfaces.RepositoryCredential
 import org.scalafmt.interfaces.Scalafmt
 import org.scalafmt.sysops.AbsoluteFile
 import org.scalafmt.sysops.FileOps
@@ -141,6 +142,7 @@ object ScalafmtPlugin extends AutoPlugin {
       taskStreams: TaskStreams,
       cacheStoreFactory: CacheStoreFactory,
       resolvers: Seq[Resolver],
+      credentials: Seq[Credentials],
       currentProject: ResolvedProject,
       filterMode: String,
       errorHandling: ErrorHandling
@@ -156,13 +158,24 @@ object ScalafmtPlugin extends AutoPlugin {
       val repositories = resolvers.collect { case r: MavenRepository =>
         r.root
       }
+      val repoCredentials = credentials.map { x =>
+        val cred = Credentials.toDirect(x)
+        new RepositoryCredential(cred.host, cred.userName, cred.passwd)
+      }
+
       log.debug(
-        s"Adding repositories ${repositories.mkString("[", ",", "]")}"
+        repositories.mkString("Adding repositories [", ",", "]")
       )
+      log.debug {
+        val info = repoCredentials.map(x => s"${x.username}@${x.host}")
+        info.mkString("Adding credentials [", ",", "]")
+      }
+
       val scalafmtSession =
         globalInstance
           .withReporter(reporter)
           .withMavenRepositories(repositories: _*)
+          .withRepositoryCredentials(repoCredentials: _*)
           .createSession(config.toAbsolutePath)
       if (scalafmtSession == null)
         throw messageException(
@@ -465,6 +478,7 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value,
         (scalafmt / streams).value.cacheStoreFactory,
         fullResolvers.value,
+        credentials.value,
         thisProject.value,
         scalafmtFilter.value,
         new ErrorHandling(
@@ -511,6 +525,7 @@ object ScalafmtPlugin extends AutoPlugin {
         streams.value,
         (scalafmt / streams).value.cacheStoreFactory,
         fullResolvers.value,
+        credentials.value,
         thisProject.value,
         "",
         new ErrorHandling(
