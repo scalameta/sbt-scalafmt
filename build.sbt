@@ -37,11 +37,11 @@ inThisBuild(
     ),
     resolvers ++= Resolver.sonatypeOssRepos("public"),
     scalaVersion := "2.12.18",
-    publishArtifact in packageDoc := sys.env.contains("CI"),
-    publishArtifact in packageSrc := sys.env.contains("CI")
+    packageDoc / publishArtifact := sys.env.contains("CI"),
+    packageSrc / publishArtifact := sys.env.contains("CI")
   )
 )
-skip in publish := true
+publish / skip := true
 
 val scalafmtVersion = "3.7.13"
 onLoadMessage := s"Welcome to sbt-scalafmt ${version.value} (scalafmt ${scalafmtVersion})"
