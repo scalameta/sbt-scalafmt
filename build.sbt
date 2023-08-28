@@ -35,7 +35,7 @@ inThisBuild(
         url("https://github.com/tanishiking/")
       )
     ),
-    resolvers += Resolver.sonatypeRepo("public"),
+    resolvers ++= Resolver.sonatypeOssRepos("public"),
     scalaVersion := "2.12.18",
     publishArtifact in packageDoc := sys.env.contains("CI"),
     publishArtifact in packageSrc := sys.env.contains("CI")
