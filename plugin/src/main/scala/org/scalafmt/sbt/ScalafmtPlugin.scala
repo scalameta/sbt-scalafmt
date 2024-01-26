@@ -56,6 +56,10 @@ object ScalafmtPlugin extends AutoPlugin {
         "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
           "Does not write to files."
       )
+    val scalafmtSbtOnCompile =
+      settingKey[Boolean](
+        "Format *.sbt and project/*.scala files on compile, off by default."
+      )
     val scalafmtOnly = inputKey[Unit]("Format a single given file.")
     val scalafmtAll = taskKey[Unit](
       "Execute the scalafmt task for all configurations in which it is enabled. " +
@@ -100,6 +104,11 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private val scalafmtDoFormatOnCompile =
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
+
+  private val scalafmtDoFormatSbtOnCompile =
+    taskKey[Unit](
+      "Format *.sbt and project/*.scala files if scalafmtSbtOnCompile is on."
+    )
 
   private val scalaConfig =
     scalafmtConfig.map { f =>
@@ -506,8 +515,18 @@ object ScalafmtPlugin extends AutoPlugin {
         Def.task(())
       }
     }.value,
+    scalafmtDoFormatSbtOnCompile := Def.settingDyn {
+      if (scalafmtSbtOnCompile.value) {
+        scalafmtSbt in resolvedScoped.value.scope
+      } else {
+        Def.task(())
+      }
+    }.value,
     sources in Compile := (sources in Compile)
-      .dependsOn(scalafmtDoFormatOnCompile)
+      .dependsOn(
+        scalafmtDoFormatOnCompile,
+        scalafmtDoFormatSbtOnCompile
+      )
       .value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
@@ -561,6 +580,7 @@ object ScalafmtPlugin extends AutoPlugin {
     Seq(
       scalafmtFilter := "",
       scalafmtOnCompile := false,
+      scalafmtSbtOnCompile := false,
       scalafmtLogOnEachError := false,
       scalafmtFailOnErrors := true,
       scalafmtPrintDiff := false,
