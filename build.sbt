@@ -36,7 +36,7 @@ inThisBuild(
       )
     ),
     resolvers ++= Resolver.sonatypeOssRepos("public"),
-    scalaVersion := "2.12.19",
+    scalaVersion := "2.13.13",
     packageDoc / publishArtifact := sys.env.contains("CI"),
     packageSrc / publishArtifact := sys.env.contains("CI")
   )
