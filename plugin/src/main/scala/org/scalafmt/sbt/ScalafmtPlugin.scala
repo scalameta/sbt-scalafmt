@@ -103,11 +103,10 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private val scalaConfig =
     scalafmtConfig.map { f =>
-      if (f.exists()) {
+      if (f.exists())
         f.toPath
-      } else {
+      else
         throw messageException(s"File does not exist: ${f.toPath}")
-      }
     }
   private val sbtConfig = scalaConfig
 
@@ -320,14 +319,14 @@ object ScalafmtPlugin extends AutoPlugin {
       throwOnFailure(checkFilteredSources(filterFiles(sources, dirs)))
 
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
-      if (sources.nonEmpty) {
+      if (sources.nonEmpty)
         log.info(s"Checking ${sources.size} Scala sources ($baseDir)...")
-      }
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
-        val diff = if (errorHandling.printDiff) {
-          DiffUtils.unifiedDiff("/" + asRelative(file), input, output)
-        } else ""
+        val diff =
+          if (errorHandling.printDiff)
+            DiffUtils.unifiedDiff("/" + asRelative(file), input, output)
+          else ""
         val suffix = if (diff.isEmpty) "" else '\n' + diff
         log.warn(s"$file isn't formatted properly!$suffix")
         unformatted += file
@@ -404,9 +403,8 @@ object ScalafmtPlugin extends AutoPlugin {
             pathname.getAbsolutePath.startsWith(targetDirectory)
         )
         .get
-    } else {
+    } else
       Nil
-    }
   }
 
   private def scalafmtTask(
@@ -500,11 +498,10 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
-      if (scalafmtOnCompile.value) {
+      if (scalafmtOnCompile.value)
         scalafmt in resolvedScoped.value.scope
-      } else {
+      else
         Def.task(())
-      }
     }.value,
     sources in Compile := (sources in Compile)
       .dependsOn(scalafmtDoFormatOnCompile)

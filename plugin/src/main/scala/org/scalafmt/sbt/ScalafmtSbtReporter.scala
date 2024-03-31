@@ -32,14 +32,13 @@ class ScalafmtSbtReporter(
       res.write(" [")
       res.write(file.toString)
       res.write(']')
-      if (null != e && !toThrow) {
+      if (null != e && !toThrow)
         if (errorHandling.detailedErrorEnabled)
           e.printStackTrace(new PrintWriter(res))
         else if (messageOpt ne nestedMessage) nestedMessage.foreach { x =>
           res.write(": ")
           res.write(x)
         }
-      }
       res.toString
     }
 
