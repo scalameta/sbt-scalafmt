@@ -17,25 +17,25 @@ inThisBuild(List(
       "poslegm",
       "Mikhail Chugunkov",
       "poslegm@gmail.com",
-      url("https://chugunkov.website/")
+      url("https://chugunkov.website/"),
     ),
     Developer(
       "olafurpg",
       "Ólafur Páll Geirsson",
       "olafurpg@gmail.com",
-      url("https://geirsson.com")
+      url("https://geirsson.com"),
     ),
     Developer(
       "tanishiking",
       "Rikito Taniguchi",
       "rikiriki1238@gmail.com",
-      url("https://github.com/tanishiking/")
-    )
+      url("https://github.com/tanishiking/"),
+    ),
   ),
   resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalaVersion := "2.12.19",
   packageDoc / publishArtifact := sys.env.contains("CI"),
-  packageSrc / publishArtifact := sys.env.contains("CI")
+  packageSrc / publishArtifact := sys.env.contains("CI"),
 ))
 publish / skip := true
 
@@ -48,16 +48,16 @@ lazy val plugin = project.enablePlugins(SbtPlugin).settings(
   libraryDependencies ++= List(
     "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
     "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion,
-    "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion
+    "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion,
   ),
   scriptedBufferLog := false,
   scriptedLaunchOpts += s"-Dplugin.version=${version.value}",
   // For compat reasons we have this in here to ensure we are testing against 1.2.8
   // We honestly probably don't need to, so if this ever causes issues, rip it out.
-  pluginCrossBuild / sbtVersion := "1.2.8"
+  pluginCrossBuild / sbtVersion := "1.2.8",
 )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.
 inScope(Global)(Seq(
-  PgpKeys.pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toCharArray())
+  PgpKeys.pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toCharArray()),
 ))
