@@ -381,21 +381,21 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) = Def.task(session.formatTrackedSources(sources, dirs)) tag
-    (ScalafmtTagPack: _*)
+  ) = Def.task(session.formatTrackedSources(sources, dirs))
+    .tag(ScalafmtTagPack: _*)
 
   private def scalafmtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) = Def.task(session.checkTrackedSources(sources, dirs)) tag
-    (ScalafmtTagPack: _*)
+  ) = Def.task(session.checkTrackedSources(sources, dirs))
+    .tag(ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
       f: (Seq[File], Seq[File], FormatSession) => InitTask
   ) = Def.taskDyn[Unit] {
-    val sources = (unmanagedSources in scalafmt).?.value.getOrElse(Seq.empty)
-    val dirs = (unmanagedSourceDirectories in scalafmt).?.value.getOrElse(Nil)
+    val sources = unmanagedSources.in(scalafmt).?.value.getOrElse(Seq.empty)
+    val dirs = unmanagedSourceDirectories.in(scalafmt).?.value.getOrElse(Nil)
     getScalafmtTask(f)(sources, dirs, scalaConfig.value)
   }
 
@@ -403,13 +403,13 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) = Def.task(session.formatSources(sources, dirs)) tag (ScalafmtTagPack: _*)
+  ) = Def.task(session.formatSources(sources, dirs)).tag(ScalafmtTagPack: _*)
 
   private def scalafmtSbtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) = Def.task(session.checkSources(sources, dirs)) tag (ScalafmtTagPack: _*)
+  ) = Def.task(session.checkSources(sources, dirs)).tag(ScalafmtTagPack: _*)
 
   private def getScalafmtSbtTasks(
       func: (Seq[File], Seq[File], FormatSession) => InitTask
@@ -460,10 +460,10 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
-      if (scalafmtOnCompile.value) scalafmt in resolvedScoped.value.scope
+      if (scalafmtOnCompile.value) scalafmt.in(resolvedScoped.value.scope)
       else Def.task(())
     }.value,
-    sources in Compile := (sources in Compile)
+    sources.in(Compile) := sources.in(Compile)
       .dependsOn(scalafmtDoFormatOnCompile).value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
@@ -507,7 +507,7 @@ object ScalafmtPlugin extends AutoPlugin {
     )
 
   override def buildSettings: Seq[Def.Setting[_]] =
-    Seq(scalafmtConfig := (baseDirectory in ThisBuild).value / ".scalafmt.conf")
+    Seq(scalafmtConfig := baseDirectory.in(ThisBuild).value / ".scalafmt.conf")
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
     scalafmtFilter := "",
