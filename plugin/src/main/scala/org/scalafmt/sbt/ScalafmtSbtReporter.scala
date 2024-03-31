@@ -19,8 +19,7 @@ class ScalafmtSbtReporter(
   override def error(file: Path, message: String): Unit =
     error(file, message, null)
 
-  override def error(file: Path, e: Throwable): Unit =
-    error(file, null, e)
+  override def error(file: Path, e: Throwable): Unit = error(file, null, e)
 
   override def error(file: Path, message: String, e: Throwable): Unit = {
     def getMessage(toThrow: Boolean) = {
@@ -33,8 +32,8 @@ class ScalafmtSbtReporter(
       res.write(file.toString)
       res.write(']')
       if (null != e && !toThrow)
-        if (errorHandling.detailedErrorEnabled)
-          e.printStackTrace(new PrintWriter(res))
+        if (errorHandling.detailedErrorEnabled) e
+          .printStackTrace(new PrintWriter(res))
         else if (messageOpt ne nestedMessage) nestedMessage.foreach { x =>
           res.write(": ")
           res.write(x)
@@ -49,11 +48,10 @@ class ScalafmtSbtReporter(
     }
   }
 
-  override def excluded(file: Path): Unit =
-    log.debug(s"file excluded: $file")
+  override def excluded(file: Path): Unit = log.debug(s"file excluded: $file")
 
-  override def parsedConfig(config: Path, scalafmtVersion: String): Unit =
-    log.debug(s"parsed config (v$scalafmtVersion): $config")
+  override def parsedConfig(config: Path, scalafmtVersion: String): Unit = log
+    .debug(s"parsed config (v$scalafmtVersion): $config")
 
   override def downloadWriter(): PrintWriter = new PrintWriter(out)
   override def downloadOutputStreamWriter(): OutputStreamWriter = out
