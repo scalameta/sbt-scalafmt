@@ -78,7 +78,9 @@ object ScalafmtPlugin extends AutoPlugin {
 
   case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
   object ScalafmtAnalysis {
-    import sjsonnew.{:*:, LList, LNil}
+    import sjsonnew.:*:
+    import sjsonnew.LList
+    import sjsonnew.LNil
     implicit val analysisIso = LList.iso(
       { a: ScalafmtAnalysis =>
         ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
