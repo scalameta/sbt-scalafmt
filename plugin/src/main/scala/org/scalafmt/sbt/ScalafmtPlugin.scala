@@ -36,39 +36,39 @@ object ScalafmtPlugin extends AutoPlugin {
     val scalafmtIncremental =
       taskKey[Unit]("Format Scala sources to be compiled incrementally with scalafmt (alias to scalafmt).")
     val scalafmtCheck = taskKey[Unit](
-      "Fails if a Scala source is mis-formatted. Does not write to files."
+      "Fails if a Scala source is mis-formatted. Does not write to files.",
     )
     val scalafmtOnCompile = settingKey[Boolean](
-      "Format Scala source files on compile, off by default."
+      "Format Scala source files on compile, off by default.",
     )
     val scalafmtConfig = taskKey[File](
       "Location of .scalafmt.conf file. " +
-        "If the file does not exist, exception is thrown."
+        "If the file does not exist, exception is thrown.",
     )
     val scalafmtSbt =
       taskKey[Unit]("Format *.sbt and project/*.scala files for this sbt build.")
     val scalafmtSbtCheck = taskKey[Unit](
       "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
-        "Does not write to files."
+        "Does not write to files.",
     )
     val scalafmtOnly = inputKey[Unit]("Format a single given file.")
     val scalafmtAll = taskKey[Unit](
       "Execute the scalafmt task for all configurations in which it is enabled. " +
-        "(By default this means the Compile and Test configurations.)"
+        "(By default this means the Compile and Test configurations.)",
     )
     val scalafmtCheckAll = taskKey[Unit](
       "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
-        "(By default this means the Compile and Test configurations.)"
+        "(By default this means the Compile and Test configurations.)",
     )
     val scalafmtDetailedError = settingKey[Boolean](
-      "Enables logging of detailed errors with stacktraces, disabled by default"
+      "Enables logging of detailed errors with stacktraces, disabled by default",
     )
     val scalafmtFilter =
       settingKey[String]("File filtering mode when running scalafmt.")
     val scalafmtLogOnEachError =
       settingKey[Boolean]("Enables logging on an error.")
     val scalafmtFailOnErrors = settingKey[Boolean](
-      "Controls whether to fail in case of formatting errors."
+      "Controls whether to fail in case of formatting errors.",
     )
     val scalafmtPrintDiff =
       settingKey[Boolean]("Enables full diff output when running check.")
@@ -85,7 +85,7 @@ object ScalafmtPlugin extends AutoPlugin {
       { a: ScalafmtAnalysis =>
         ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
       },
-      { in: Set[File] :*: LNil => ScalafmtAnalysis(in.head) }
+      { in: Set[File] :*: LNil => ScalafmtAnalysis(in.head) },
     )
   }
 
@@ -131,13 +131,13 @@ object ScalafmtPlugin extends AutoPlugin {
       credentials: Seq[Credentials],
       currentProject: ResolvedProject,
       filterMode: String,
-      errorHandling: ErrorHandling
+      errorHandling: ErrorHandling,
   ) {
     private val log = new ScalafmtLogger(taskStreams.log)
     private val reporter = new ScalafmtSbtReporter(
       log,
       new OutputStreamWriter(taskStreams.binary()),
-      errorHandling
+      errorHandling,
     )
 
     private val scalafmtSession = {
@@ -159,7 +159,7 @@ object ScalafmtPlugin extends AutoPlugin {
         .withRepositoryCredentials(repoCredentials: _*)
         .createSession(config.toAbsolutePath)
       if (scalafmtSession == null) throw messageException(
-        "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
+        "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt",
       )
       scalafmtSession
     }
@@ -208,7 +208,7 @@ object ScalafmtPlugin extends AutoPlugin {
     }
 
     private def withFormattedSources[T](initial: T, sources: Seq[File])(
-        onFormat: (T, File, Input, Output) => T
+        onFormat: (T, File, Input, Output) => T,
     ): T = {
       var res = initial
       var good = 0
@@ -320,9 +320,9 @@ object ScalafmtPlugin extends AutoPlugin {
     // The tracking is shared between scalafmt and scalafmtCheck
     private def trackSourcesAndConfig(
         cacheStoreFactory: CacheStoreFactory,
-        sources: Seq[File]
+        sources: Seq[File],
     )(
-        f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis
+        f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis,
     ): ScalafmtAnalysis = {
       // use prevTracker to share previous values between tasks
       val prevTracker = Tracked
@@ -330,11 +330,11 @@ object ScalafmtPlugin extends AutoPlugin {
           (_, prev0) =>
             val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
             val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
-              cacheStoreFactory.make("config")
+              cacheStoreFactory.make("config"),
             ) { case (configChanged, configHash) =>
               Tracked.diffOutputs(
                 cacheStoreFactory.make("output-diff"),
-                FileInfo.lastModified
+                FileInfo.lastModified,
               )(sources.toSet) { (outDiff: ChangeReport[File]) =>
                 log.debug(outDiff.toString())
                 f(outDiff, configChanged, prev)
@@ -348,7 +348,7 @@ object ScalafmtPlugin extends AutoPlugin {
     private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
       val failed = analysis.failedScalafmtCheck
       if (failed.nonEmpty) throw messageException(
-        s"${failed.size} files must be formatted ($baseDir)"
+        s"${failed.size} files must be formatted ($baseDir)",
       )
     }
   }
@@ -374,7 +374,7 @@ object ScalafmtPlugin extends AutoPlugin {
         .getAbsolutePath
       projectDirectory.descendantsExcept(
         "*.scala",
-        (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory)
+        (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory),
       ).get
     } else Nil
   }
@@ -382,19 +382,19 @@ object ScalafmtPlugin extends AutoPlugin {
   private def scalafmtTask(
       sources: Seq[File],
       dirs: Seq[File],
-      session: FormatSession
+      session: FormatSession,
   ) = Def.task(session.formatTrackedSources(sources, dirs))
     .tag(ScalafmtTagPack: _*)
 
   private def scalafmtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
-      session: FormatSession
+      session: FormatSession,
   ) = Def.task(session.checkTrackedSources(sources, dirs))
     .tag(ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
-      f: (Seq[File], Seq[File], FormatSession) => InitTask
+      f: (Seq[File], Seq[File], FormatSession) => InitTask,
   ) = Def.taskDyn[Unit] {
     val sources = unmanagedSources.in(scalafmt).?.value.getOrElse(Seq.empty)
     val dirs = unmanagedSourceDirectories.in(scalafmt).?.value.getOrElse(Nil)
@@ -404,26 +404,26 @@ object ScalafmtPlugin extends AutoPlugin {
   private def scalafmtSbtTask(
       sources: Seq[File],
       dirs: Seq[File],
-      session: FormatSession
+      session: FormatSession,
   ) = Def.task(session.formatSources(sources, dirs)).tag(ScalafmtTagPack: _*)
 
   private def scalafmtSbtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
-      session: FormatSession
+      session: FormatSession,
   ) = Def.task(session.checkSources(sources, dirs)).tag(ScalafmtTagPack: _*)
 
   private def getScalafmtSbtTasks(
-      func: (Seq[File], Seq[File], FormatSession) => InitTask
+      func: (Seq[File], Seq[File], FormatSession) => InitTask,
   ) = Def.taskDyn {
     joinScalafmtTasks(func)(
       (sbtSources.value, Nil, sbtConfig.value),
-      (metabuildSources.value, Nil, scalaConfig.value)
+      (metabuildSources.value, Nil, scalaConfig.value),
     )
   }
 
   private def joinScalafmtTasks(
-      func: (Seq[File], Seq[File], FormatSession) => InitTask
+      func: (Seq[File], Seq[File], FormatSession) => InitTask,
   )(tuples: (Seq[File], Seq[File], Path)*) = {
     val tasks = tuples.map { case (files, dirs, config) =>
       getScalafmtTask(func)(files, dirs, config)
@@ -432,7 +432,7 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private def getScalafmtTask(
-      func: (Seq[File], Seq[File], FormatSession) => InitTask
+      func: (Seq[File], Seq[File], FormatSession) => InitTask,
   )(files: Seq[File], dirs: Seq[File], config: Path) = Def.taskDyn[Unit] {
     if (files.isEmpty) Def.task(Unit)
     else {
@@ -448,8 +448,8 @@ object ScalafmtPlugin extends AutoPlugin {
           scalafmtPrintDiff.value,
           scalafmtLogOnEachError.value,
           scalafmtFailOnErrors.value,
-          scalafmtDetailedError.value
-        )
+          scalafmtDetailedError.value,
+        ),
       )
       func(files, dirs, session)
     }
@@ -491,10 +491,10 @@ object ScalafmtPlugin extends AutoPlugin {
           scalafmtPrintDiff.value,
           scalafmtLogOnEachError.value,
           scalafmtFailOnErrors.value,
-          scalafmtDetailedError.value
-        )
+          scalafmtDetailedError.value,
+        ),
       ).formatSources(absFiles, Nil)
-    }
+    },
   )
 
   private val anyConfigsInThisProject =
@@ -505,7 +505,7 @@ object ScalafmtPlugin extends AutoPlugin {
       inConfig(_)(scalafmtConfigSettings)
     } ++ Seq(
       scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).value,
-      scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value
+      scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value,
     )
 
   override def buildSettings: Seq[Def.Setting[_]] =
@@ -517,7 +517,7 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtLogOnEachError := false,
     scalafmtFailOnErrors := true,
     scalafmtPrintDiff := false,
-    scalafmtDetailedError := false
+    scalafmtDetailedError := false,
   )
 
 }

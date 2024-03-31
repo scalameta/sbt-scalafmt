@@ -12,7 +12,7 @@ import org.scalafmt.interfaces.ScalafmtReporter
 class ScalafmtSbtReporter(
     log: Logger,
     out: OutputStreamWriter,
-    errorHandling: ErrorHandling
+    errorHandling: ErrorHandling,
 ) extends ScalafmtReporter {
   import ScalafmtSbtReporter._
 
