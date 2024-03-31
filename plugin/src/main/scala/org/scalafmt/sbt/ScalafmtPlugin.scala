@@ -33,29 +33,24 @@ object ScalafmtPlugin extends AutoPlugin {
       Seq(ConcurrentRestrictionTags.Scalafmt, Tags.CPU)
 
     @deprecated("Use scalafmt instead.", "2.0.0")
-    val scalafmtIncremental = taskKey[Unit](
-      "Format Scala sources to be compiled incrementally with scalafmt (alias to scalafmt)."
+    val scalafmtIncremental =
+      taskKey[Unit]("Format Scala sources to be compiled incrementally with scalafmt (alias to scalafmt).")
+    val scalafmtCheck = taskKey[Unit](
+      "Fails if a Scala source is mis-formatted. Does not write to files."
     )
-    val scalafmtCheck =
-      taskKey[Unit](
-        "Fails if a Scala source is mis-formatted. Does not write to files."
-      )
-    val scalafmtOnCompile =
-      settingKey[Boolean](
-        "Format Scala source files on compile, off by default."
-      )
+    val scalafmtOnCompile = settingKey[Boolean](
+      "Format Scala source files on compile, off by default."
+    )
     val scalafmtConfig = taskKey[File](
       "Location of .scalafmt.conf file. " +
         "If the file does not exist, exception is thrown."
     )
-    val scalafmtSbt = taskKey[Unit](
-      "Format *.sbt and project/*.scala files for this sbt build."
+    val scalafmtSbt =
+      taskKey[Unit]("Format *.sbt and project/*.scala files for this sbt build.")
+    val scalafmtSbtCheck = taskKey[Unit](
+      "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
+        "Does not write to files."
     )
-    val scalafmtSbtCheck =
-      taskKey[Unit](
-        "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
-          "Does not write to files."
-      )
     val scalafmtOnly = inputKey[Unit]("Format a single given file.")
     val scalafmtAll = taskKey[Unit](
       "Execute the scalafmt task for all configurations in which it is enabled. " +
@@ -65,22 +60,18 @@ object ScalafmtPlugin extends AutoPlugin {
       "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
         "(By default this means the Compile and Test configurations.)"
     )
-    val scalafmtDetailedError =
-      settingKey[Boolean](
-        "Enables logging of detailed errors with stacktraces, disabled by default"
-      )
-    val scalafmtFilter = settingKey[String](
-      "File filtering mode when running scalafmt."
+    val scalafmtDetailedError = settingKey[Boolean](
+      "Enables logging of detailed errors with stacktraces, disabled by default"
     )
-    val scalafmtLogOnEachError = settingKey[Boolean](
-      "Enables logging on an error."
-    )
+    val scalafmtFilter =
+      settingKey[String]("File filtering mode when running scalafmt.")
+    val scalafmtLogOnEachError =
+      settingKey[Boolean]("Enables logging on an error.")
     val scalafmtFailOnErrors = settingKey[Boolean](
       "Controls whether to fail in case of formatting errors."
     )
-    val scalafmtPrintDiff = settingKey[Boolean](
-      "Enables full diff output when running check."
-    )
+    val scalafmtPrintDiff =
+      settingKey[Boolean]("Enables full diff output when running check.")
   }
 
   import autoImport._
@@ -92,30 +83,24 @@ object ScalafmtPlugin extends AutoPlugin {
       { a: ScalafmtAnalysis =>
         ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
       },
-      { in: Set[File] :*: LNil =>
-        ScalafmtAnalysis(in.head)
-      }
+      { in: Set[File] :*: LNil => ScalafmtAnalysis(in.head) }
     )
   }
 
   private val scalafmtDoFormatOnCompile =
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
 
-  private val scalaConfig =
-    scalafmtConfig.map { f =>
-      if (f.exists())
-        f.toPath
-      else
-        throw messageException(s"File does not exist: ${f.toPath}")
-    }
+  private val scalaConfig = scalafmtConfig.map { f =>
+    if (f.exists()) f.toPath
+    else throw messageException(s"File does not exist: ${f.toPath}")
+  }
   private val sbtConfig = scalaConfig
 
   private type Input = String
   private type Output = String
   private type InitTask = Def.Initialize[Task[Unit]]
 
-  val globalInstance = Scalafmt
-    .create(this.getClass.getClassLoader)
+  val globalInstance = Scalafmt.create(this.getClass.getClassLoader)
     .withRespectProjectFilters(true)
 
   private object FilterMode {
@@ -132,8 +117,8 @@ object ScalafmtPlugin extends AutoPlugin {
   private class ScalafmtLogger(log: Logger) extends Logger {
     override def trace(t: => Throwable): Unit = log.trace(t)
     override def success(message: => String): Unit = success(message)
-    override def log(level: Level.Value, message: => String): Unit =
-      log.log(level, getLogMessage(message))
+    override def log(level: Level.Value, message: => String): Unit = log
+      .log(level, getLogMessage(message))
   }
 
   private class FormatSession(
@@ -154,40 +139,34 @@ object ScalafmtPlugin extends AutoPlugin {
     )
 
     private val scalafmtSession = {
-      val repositories = resolvers.collect { case r: MavenRepository =>
-        r.root
-      }
+      val repositories = resolvers.collect { case r: MavenRepository => r.root }
       val repoCredentials = credentials.flatMap { c =>
         Try(Credentials.toDirect(c)).toOption.map { dc =>
           new RepositoryCredential(dc.host, dc.userName, dc.passwd)
         }
       }
 
-      log.debug(
-        repositories.mkString("Adding repositories [", ",", "]")
-      )
+      log.debug(repositories.mkString("Adding repositories [", ",", "]"))
       log.debug {
         val info = repoCredentials.map(x => s"${x.username}@${x.host}")
         info.mkString("Adding credentials [", ",", "]")
       }
 
-      val scalafmtSession =
-        globalInstance
-          .withReporter(reporter)
-          .withMavenRepositories(repositories: _*)
-          .withRepositoryCredentials(repoCredentials: _*)
-          .createSession(config.toAbsolutePath)
-      if (scalafmtSession == null)
-        throw messageException(
-          "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
-        )
+      val scalafmtSession = globalInstance.withReporter(reporter)
+        .withMavenRepositories(repositories: _*)
+        .withRepositoryCredentials(repoCredentials: _*)
+        .createSession(config.toAbsolutePath)
+      if (scalafmtSession == null) throw messageException(
+        "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt"
+      )
       scalafmtSession
     }
 
     private lazy val baseDir: Path = currentProject.base.getCanonicalFile.toPath
 
-    @inline private def asRelative(file: File): String =
-      baseDir.relativize(file.getCanonicalFile.toPath).toString
+    @inline
+    private def asRelative(file: File): String = baseDir
+      .relativize(file.getCanonicalFile.toPath).toString
 
     private def filterFiles(sources: Seq[File], dirs: Seq[File]): Seq[File] = {
       val filter = getFileFilter(dirs)
@@ -245,8 +224,7 @@ object ScalafmtPlugin extends AutoPlugin {
             Option(output.value) match {
               case None => bad += 1
               case Some(o) =>
-                if (x == o) good += 1
-                else res = onFormat(res, file, x, o)
+                if (x == o) good += 1 else res = onFormat(res, file, x, o)
             }
         }
       }
@@ -280,8 +258,8 @@ object ScalafmtPlugin extends AutoPlugin {
       formatFilteredSources(filterFiles(sources, dirs))
 
     private def formatFilteredSources(sources: Seq[File]): Unit = {
-      if (sources.nonEmpty)
-        log.info(s"Formatting ${sources.length} Scala sources ($baseDir)...")
+      if (sources.nonEmpty) log
+        .info(s"Formatting ${sources.length} Scala sources ($baseDir)...")
       val cnt = withFormattedSources(0, sources) { (res, file, _, output) =>
         IO.write(file, output)
         res + 1
@@ -300,17 +278,15 @@ object ScalafmtPlugin extends AutoPlugin {
             if (configChanged) Set.empty
             else prev.failedScalafmtCheck & outDiff.unmodified
           if (prevFailed.nonEmpty) {
-            val files: Seq[String] =
-              prevFailed.map(asRelative)(collection.breakOut)
+            val files: Seq[String] = prevFailed
+              .map(asRelative)(collection.breakOut)
             val prefix =
               s"$baseDir: ${files.length} files aren't formatted properly:\n"
             log.warn(files.sorted.mkString(prefix, "\n", ""))
           }
-          val result =
-            checkFilteredSources(filesToCheck)
-          prev.copy(
-            failedScalafmtCheck = result.failedScalafmtCheck | prevFailed
-          )
+          val result = checkFilteredSources(filesToCheck)
+          prev
+            .copy(failedScalafmtCheck = result.failedScalafmtCheck | prevFailed)
       }
       throwOnFailure(result)
     }
@@ -319,13 +295,13 @@ object ScalafmtPlugin extends AutoPlugin {
       throwOnFailure(checkFilteredSources(filterFiles(sources, dirs)))
 
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
-      if (sources.nonEmpty)
-        log.info(s"Checking ${sources.size} Scala sources ($baseDir)...")
+      if (sources.nonEmpty) log
+        .info(s"Checking ${sources.size} Scala sources ($baseDir)...")
       val unformatted = Set.newBuilder[File]
       withFormattedSources(Unit, sources) { (_, file, input, output) =>
         val diff =
-          if (errorHandling.printDiff)
-            DiffUtils.unifiedDiff("/" + asRelative(file), input, output)
+          if (errorHandling.printDiff) DiffUtils
+            .unifiedDiff("/" + asRelative(file), input, output)
           else ""
         val suffix = if (diff.isEmpty) "" else '\n' + diff
         log.warn(s"$file isn't formatted properly!$suffix")
@@ -347,40 +323,38 @@ object ScalafmtPlugin extends AutoPlugin {
         f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis
     ): ScalafmtAnalysis = {
       // use prevTracker to share previous values between tasks
-      val prevTracker = Tracked.lastOutput[Unit, ScalafmtAnalysis](
-        cacheStoreFactory.make("last")
-      ) { (_, prev0) =>
-        val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
-        val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
-          cacheStoreFactory.make("config")
-        ) { case (configChanged, configHash) =>
-          Tracked.diffOutputs(
-            cacheStoreFactory.make("output-diff"),
-            FileInfo.lastModified
-          )(sources.toSet) { (outDiff: ChangeReport[File]) =>
-            log.debug(outDiff.toString())
-            f(outDiff, configChanged, prev)
-          }
+      val prevTracker = Tracked
+        .lastOutput[Unit, ScalafmtAnalysis](cacheStoreFactory.make("last")) {
+          (_, prev0) =>
+            val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
+            val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
+              cacheStoreFactory.make("config")
+            ) { case (configChanged, configHash) =>
+              Tracked.diffOutputs(
+                cacheStoreFactory.make("output-diff"),
+                FileInfo.lastModified
+              )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+                log.debug(outDiff.toString())
+                f(outDiff, configChanged, prev)
+              }
+            }
+            tracker(FileInfo.hash(config.toFile))
         }
-        tracker(FileInfo.hash(config.toFile))
-      }
       prevTracker(())
     }
 
     private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
       val failed = analysis.failedScalafmtCheck
-      if (failed.nonEmpty)
-        throw messageException(
-          s"${failed.size} files must be formatted ($baseDir)"
-        )
+      if (failed.nonEmpty) throw messageException(
+        s"${failed.size} files must be formatted ($baseDir)"
+      )
     }
   }
 
   private lazy val sbtSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
     val thisBase = thisProject.value.base
-    val rootSbt =
-      BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
+    val rootSbt = BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
     val metabuildSbt =
       if (rootBase == thisBase)
         (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get
@@ -394,36 +368,28 @@ object ScalafmtPlugin extends AutoPlugin {
 
     if (rootBase == thisBase) {
       val projectDirectory = BuildPaths.projectStandard(thisBase)
-      val targetDirectory =
-        BuildPaths.outputDirectory(projectDirectory).getAbsolutePath
-      projectDirectory
-        .descendantsExcept(
-          "*.scala",
-          (pathname: File) =>
-            pathname.getAbsolutePath.startsWith(targetDirectory)
-        )
-        .get
-    } else
-      Nil
+      val targetDirectory = BuildPaths.outputDirectory(projectDirectory)
+        .getAbsolutePath
+      projectDirectory.descendantsExcept(
+        "*.scala",
+        (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory)
+      ).get
+    } else Nil
   }
 
   private def scalafmtTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) =
-    Def.task {
-      session.formatTrackedSources(sources, dirs)
-    } tag (ScalafmtTagPack: _*)
+  ) = Def.task(session.formatTrackedSources(sources, dirs)) tag
+    (ScalafmtTagPack: _*)
 
   private def scalafmtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) =
-    Def.task {
-      session.checkTrackedSources(sources, dirs)
-    } tag (ScalafmtTagPack: _*)
+  ) = Def.task(session.checkTrackedSources(sources, dirs)) tag
+    (ScalafmtTagPack: _*)
 
   private def getScalafmtSourcesTask(
       f: (Seq[File], Seq[File], FormatSession) => InitTask
@@ -437,17 +403,13 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) = Def.task {
-    session.formatSources(sources, dirs)
-  } tag (ScalafmtTagPack: _*)
+  ) = Def.task(session.formatSources(sources, dirs)) tag (ScalafmtTagPack: _*)
 
   private def scalafmtSbtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession
-  ) = Def.task {
-    session.checkSources(sources, dirs)
-  } tag (ScalafmtTagPack: _*)
+  ) = Def.task(session.checkSources(sources, dirs)) tag (ScalafmtTagPack: _*)
 
   private def getScalafmtSbtTasks(
       func: (Seq[File], Seq[File], FormatSession) => InitTask
@@ -498,14 +460,11 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
-      if (scalafmtOnCompile.value)
-        scalafmt in resolvedScoped.value.scope
-      else
-        Def.task(())
+      if (scalafmtOnCompile.value) scalafmt in resolvedScoped.value.scope
+      else Def.task(())
     }.value,
     sources in Compile := (sources in Compile)
-      .dependsOn(scalafmtDoFormatOnCompile)
-      .value,
+      .dependsOn(scalafmtDoFormatOnCompile).value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
       val absFiles = files.flatMap { fileS =>
@@ -536,9 +495,8 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   )
 
-  private val anyConfigsInThisProject = ScopeFilter(
-    configurations = inAnyConfiguration
-  )
+  private val anyConfigsInThisProject =
+    ScopeFilter(configurations = inAnyConfiguration)
 
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(Compile, Test, IntegrationTest).flatMap {
@@ -548,20 +506,16 @@ object ScalafmtPlugin extends AutoPlugin {
       scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value
     )
 
-  override def buildSettings: Seq[Def.Setting[_]] = Seq(
-    scalafmtConfig := {
-      (baseDirectory in ThisBuild).value / ".scalafmt.conf"
-    }
-  )
+  override def buildSettings: Seq[Def.Setting[_]] =
+    Seq(scalafmtConfig := (baseDirectory in ThisBuild).value / ".scalafmt.conf")
 
-  override def globalSettings: Seq[Def.Setting[_]] =
-    Seq(
-      scalafmtFilter := "",
-      scalafmtOnCompile := false,
-      scalafmtLogOnEachError := false,
-      scalafmtFailOnErrors := true,
-      scalafmtPrintDiff := false,
-      scalafmtDetailedError := false
-    )
+  override def globalSettings: Seq[Def.Setting[_]] = Seq(
+    scalafmtFilter := "",
+    scalafmtOnCompile := false,
+    scalafmtLogOnEachError := false,
+    scalafmtFailOnErrors := true,
+    scalafmtPrintDiff := false,
+    scalafmtDetailedError := false
+  )
 
 }
