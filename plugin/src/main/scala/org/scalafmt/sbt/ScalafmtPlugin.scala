@@ -280,8 +280,8 @@ object ScalafmtPlugin extends AutoPlugin {
             if (configChanged) Set.empty
             else prev.failedScalafmtCheck & outDiff.unmodified
           if (prevFailed.nonEmpty) {
-            val files: Seq[String] = prevFailed
-              .map(asRelative)(collection.breakOut)
+            val files: Seq[String] = prevFailed.iterator
+              .map(asRelative).to(scala.collection.immutable.IndexedSeq)
             val prefix =
               s"$baseDir: ${files.length} files aren't formatted properly:\n"
             log.warn(files.sorted.mkString(prefix, "\n", ""))
