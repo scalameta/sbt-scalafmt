@@ -34,6 +34,7 @@ inThisBuild(List(
   ),
   resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalaVersion := "2.12.20",
+  crossScalaVersions += "3.3.4",
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
@@ -47,14 +48,27 @@ lazy val plugin = project.enablePlugins(SbtPlugin).settings(
   moduleName := "sbt-scalafmt",
   libraryDependencies ++= List(
     "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
-    "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion,
-    "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion,
+    "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion cross
+      CrossVersion.for3Use2_13,
+    "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion cross
+      CrossVersion.for3Use2_13,
   ),
   scriptedBufferLog := false,
   scriptedLaunchOpts += s"-Dplugin.version=${version.value}",
   // For compat reasons we have this in here to ensure we are testing against 1.2.8
   // We honestly probably don't need to, so if this ever causes issues, rip it out.
-  pluginCrossBuild / sbtVersion := "1.2.8",
+  pluginCrossBuild / sbtVersion := {
+    scalaBinaryVersion.value match {
+      case "2.12" => "1.2.8"
+      case _ => "2.0.0-M2"
+    }
+  },
+  conflictWarning := {
+    scalaBinaryVersion.value match {
+      case "3" => ConflictWarning("warn", Level.Warn, false)
+      case _ => conflictWarning.value
+    }
+  },
 )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.

@@ -4,7 +4,9 @@ import java.io.OutputStreamWriter
 import java.nio.file.Path
 
 import sbt.Keys._
-import sbt._
+// format: off
+import sbt.{given, _}
+// format: on
 import sbt.librarymanagement.MavenRepository
 import sbt.util.CacheImplicits._
 import sbt.util.CacheStoreFactory
@@ -396,8 +398,8 @@ object ScalafmtPlugin extends AutoPlugin {
   private def getScalafmtSourcesTask(
       f: (Seq[File], Seq[File], FormatSession) => InitTask,
   ) = Def.taskDyn[Unit] {
-    val sources = unmanagedSources.in(scalafmt).?.value.getOrElse(Seq.empty)
-    val dirs = unmanagedSourceDirectories.in(scalafmt).?.value.getOrElse(Nil)
+    val sources = (scalafmt / unmanagedSources).?.value.getOrElse(Seq.empty)
+    val dirs = (scalafmt / unmanagedSourceDirectories).?.value.getOrElse(Nil)
     getScalafmtTask(f)(sources, dirs, scalaConfig.value)
   }
 
@@ -462,10 +464,10 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
-      if (scalafmtOnCompile.value) scalafmt.in(resolvedScoped.value.scope)
+      if (scalafmtOnCompile.value) resolvedScoped.value.scope / scalafmt
       else Def.task(())
     }.value,
-    sources.in(Compile) := sources.in(Compile)
+    Compile / sources := (Compile / sources)
       .dependsOn(scalafmtDoFormatOnCompile).value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
@@ -509,7 +511,7 @@ object ScalafmtPlugin extends AutoPlugin {
     )
 
   override def buildSettings: Seq[Def.Setting[_]] =
-    Seq(scalafmtConfig := baseDirectory.in(ThisBuild).value / ".scalafmt.conf")
+    Seq(scalafmtConfig := (ThisBuild / baseDirectory).value / ".scalafmt.conf")
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
     scalafmtFilter := "",
