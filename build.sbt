@@ -34,8 +34,8 @@ inThisBuild(List(
   ),
   resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalaVersion := "2.12.20",
-  packageDoc / publishArtifact := sys.env.contains("CI"),
-  packageSrc / publishArtifact := sys.env.contains("CI"),
+  packageDoc / publishArtifact := insideCI.value,
+  packageSrc / publishArtifact := insideCI.value,
 ))
 publish / skip := true
 
