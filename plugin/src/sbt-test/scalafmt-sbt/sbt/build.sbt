@@ -1,7 +1,7 @@
 import java.io.File
 import scala.util.{Failure, Success, Try}
 
-fork in ThisBuild := true
+ThisBuild / fork := true
 
 lazy val p123 = project
   .in(file("."))
