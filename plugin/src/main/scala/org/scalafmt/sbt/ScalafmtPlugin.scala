@@ -79,14 +79,15 @@ object ScalafmtPlugin extends AutoPlugin {
   case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
   object ScalafmtAnalysis {
     import sjsonnew.:*:
+    import sjsonnew.IsoLList
     import sjsonnew.LList
     import sjsonnew.LNil
-    implicit val analysisIso = LList.iso(
-      { a: ScalafmtAnalysis =>
-        ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil
-      },
-      { in: Set[File] :*: LNil => ScalafmtAnalysis(in.head) },
-    )
+    implicit val analysisIso: IsoLList.Aux[ScalafmtAnalysis, Set[File] :*: LNil] =
+      LList.iso(
+        (a: ScalafmtAnalysis) =>
+          ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil,
+        (in: Set[File] :*: LNil) => ScalafmtAnalysis(in.head),
+      )
   }
 
   private val scalafmtDoFormatOnCompile =
@@ -187,7 +188,7 @@ object ScalafmtPlugin extends AutoPlugin {
         Try(getFiles) match {
           case Failure(x) =>
             log.warn(s"format all files; $gitMessage: ${x.getMessage}")
-            _: Path => true
+            (_: Path) => true
           case Success(x) =>
             log.debug(s"considering ${x.length} files $gitMessage")
             FileOps.getFileMatcher(x.map(_.path))
@@ -280,8 +281,7 @@ object ScalafmtPlugin extends AutoPlugin {
             if (configChanged) Set.empty
             else prev.failedScalafmtCheck & outDiff.unmodified
           if (prevFailed.nonEmpty) {
-            val files: Seq[String] = prevFailed
-              .map(asRelative)(collection.breakOut)
+            val files: Seq[String] = prevFailed.iterator.map(asRelative).toSeq
             val prefix =
               s"$baseDir: ${files.length} files aren't formatted properly:\n"
             log.warn(files.sorted.mkString(prefix, "\n", ""))
@@ -300,7 +300,7 @@ object ScalafmtPlugin extends AutoPlugin {
       if (sources.nonEmpty) log
         .info(s"Checking ${sources.size} Scala sources ($baseDir)...")
       val unformatted = Set.newBuilder[File]
-      withFormattedSources(Unit, sources) { (_, file, input, output) =>
+      withFormattedSources((), sources) { (_, file, input, output) =>
         val diff =
           if (errorHandling.printDiff) DiffUtils
             .unifiedDiff("/" + asRelative(file), input, output)
@@ -308,7 +308,7 @@ object ScalafmtPlugin extends AutoPlugin {
         val suffix = if (diff.isEmpty) "" else '\n' + diff
         log.warn(s"$file isn't formatted properly!$suffix")
         unformatted += file
-        Unit
+        ()
       }
       ScalafmtAnalysis(failedScalafmtCheck = unformatted.result())
     }
@@ -359,7 +359,7 @@ object ScalafmtPlugin extends AutoPlugin {
     val rootSbt = BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
     val metabuildSbt =
       if (rootBase == thisBase)
-        (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get
+        (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get()
       else Nil
     rootSbt ++ metabuildSbt
   }
@@ -375,7 +375,7 @@ object ScalafmtPlugin extends AutoPlugin {
       projectDirectory.descendantsExcept(
         "*.scala",
         (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory),
-      ).get
+      ).get()
     } else Nil
   }
 
@@ -434,7 +434,7 @@ object ScalafmtPlugin extends AutoPlugin {
   private def getScalafmtTask(
       func: (Seq[File], Seq[File], FormatSession) => InitTask,
   )(files: Seq[File], dirs: Seq[File], config: Path) = Def.taskDyn[Unit] {
-    if (files.isEmpty) Def.task(Unit)
+    if (files.isEmpty) Def.task(())
     else {
       val session = new FormatSession(
         config,
