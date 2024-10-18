@@ -16,14 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
       - name: Set up JVM
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
           cache: 'sbt'
-
-      - run: git fetch --tags -f
+      - uses: sbt/setup-sbt@v1
       - run:
           # for git tests
           git config --global user.email "scalafmt@scalameta.org" && git config --global user.name "scalafmt"
