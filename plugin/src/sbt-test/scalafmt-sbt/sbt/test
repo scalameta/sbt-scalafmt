@@ -1,9 +1,9 @@
--> p123/compile:scalafmtCheck
--> p123/test:scalafmtCheck
-> p123/compile:scalafmt
-> p123/test:scalafmt
-> p123/compile:scalafmtCheck
-> p123/test:scalafmtCheck
+-> p123/Compile/scalafmtCheck
+-> p123/Test/scalafmtCheck
+> p123/Compile/scalafmt
+> p123/Test/scalafmt
+> p123/Compile/scalafmtCheck
+> p123/Test/scalafmtCheck
 
 # expect failure because of bad build.sbt
 -> scalafmtSbtCheck
@@ -17,35 +17,35 @@ $ copy-file changes/Dependencies.scala project/Dependencies.scala
 > scalafmtSbtCheck
 
 > p4/scalafmtOnly src/main/scala/Test.scala src/test/scala/MainTest.scala p4.sbt
-> p4/compile:scalafmtCheck
-> p4/test:scalafmtCheck
+> p4/Compile/scalafmtCheck
+> p4/Test/scalafmtCheck
 > p4/scalafmtSbtCheck
 
 > p5/compile
-> p5/test:compile
-> p5/compile:scalafmtCheck
-> p5/test:scalafmtCheck
+> p5/Test/compile
+> p5/Compile/scalafmtCheck
+> p5/Test/scalafmtCheck
 
-> p6/compile:scalafmt
-> p6/test:scalafmt
-> p6/compile:scalafmtCheck
-> p6/test:scalafmtCheck
+> p6/Compile/scalafmt
+> p6/Test/scalafmt
+> p6/Compile/scalafmtCheck
+> p6/Test/scalafmtCheck
 
 # expect failure because of missing .scalafmt.conf
--> p7/compile:scalafmt
--> p7/test:scalafmt
--> p7/compile:scalafmtCheck
--> p7/test:scalafmtCheck
+-> p7/Compile/scalafmt
+-> p7/Test/scalafmt
+-> p7/Compile/scalafmtCheck
+-> p7/Test/scalafmtCheck
 
 > p9/scalafmtAll
 
-> p8/compile:scalafmt
+> p8/Compile/scalafmt
 > check
 $ sleep 1000
 $ touch timestamp
 $ sleep 1000
 > changeTest2
-> p8/compile:scalafmt
+> p8/Compile/scalafmt
 $ newer timestamp p8/src/main/scala/Test.scala
 $ newer p8/src/main/scala/Test2.scala timestamp
 
@@ -144,7 +144,7 @@ $ copy-file changes/good.scala p17/src/main/scala/Test2.scala
 > p17/scalafmt
 ######## formatting other config should not invalidate the cache
 $ copy-file changes/bad.scala p17/src/test/scala/Test3.scala
-> p17/test:scalafmt
+> p17/Test/scalafmt
 > p17/scalafmtCheck
 
 # set up git
