@@ -34,7 +34,7 @@ inThisBuild(List(
   ),
   resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalaVersion := "2.12.20",
-  crossScalaVersions += "3.3.4",
+  crossScalaVersions += "3.6.2",
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
@@ -60,7 +60,7 @@ lazy val plugin = project.enablePlugins(SbtPlugin).settings(
   pluginCrossBuild / sbtVersion := {
     scalaBinaryVersion.value match {
       case "2.12" => "1.2.8"
-      case _ => "2.0.0-M2"
+      case _ => "2.0.0-M3"
     }
   },
   conflictWarning := {
