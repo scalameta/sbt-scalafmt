@@ -84,12 +84,12 @@ object ScalafmtPlugin extends AutoPlugin {
     import sjsonnew.IsoLList
     import sjsonnew.LList
     import sjsonnew.LNil
-    implicit val analysisIso: IsoLList.Aux[ScalafmtAnalysis, Set[File] :*: LNil] =
-      LList.iso(
-        (a: ScalafmtAnalysis) =>
-          ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil,
-        (in: Set[File] :*: LNil) => ScalafmtAnalysis(in.head),
-      )
+    implicit val analysisIso
+        : IsoLList.Aux[ScalafmtAnalysis, Set[File] :*: LNil] = LList.iso(
+      (a: ScalafmtAnalysis) =>
+        ("failedScalafmtCheck", a.failedScalafmtCheck) :*: LNil,
+      (in: Set[File] :*: LNil) => ScalafmtAnalysis(in.head),
+    )
   }
 
   private val scalafmtDoFormatOnCompile =
@@ -146,9 +146,8 @@ object ScalafmtPlugin extends AutoPlugin {
     private val scalafmtSession = {
       val repositories = resolvers.collect { case r: MavenRepository => r.root }
       val repoCredentials = credentials.flatMap { c =>
-        Try(Credentials.toDirect(c)).toOption.map { dc =>
-          new RepositoryCredential(dc.host, dc.userName, dc.passwd)
-        }
+        Try(Credentials.toDirect(c)).toOption
+          .map(dc => new RepositoryCredential(dc.host, dc.userName, dc.passwd))
       }
 
       log.debug(repositories.mkString("Adding repositories [", ",", "]"))
@@ -467,8 +466,8 @@ object ScalafmtPlugin extends AutoPlugin {
       if (scalafmtOnCompile.value) resolvedScoped.value.scope / scalafmt
       else Def.task(())
     }.value,
-    Compile / sources := (Compile / sources)
-      .dependsOn(scalafmtDoFormatOnCompile).value,
+    Compile / sources := (Compile / sources).dependsOn(scalafmtDoFormatOnCompile)
+      .value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
       val absFiles = files.flatMap { fileS =>
@@ -503,9 +502,8 @@ object ScalafmtPlugin extends AutoPlugin {
     ScopeFilter(configurations = inAnyConfiguration)
 
   override def projectSettings: Seq[Def.Setting[_]] =
-    Seq(Compile, Test, IntegrationTest).flatMap {
-      inConfig(_)(scalafmtConfigSettings)
-    } ++ Seq(
+    Seq(Compile, Test, IntegrationTest)
+      .flatMap(inConfig(_)(scalafmtConfigSettings)) ++ Seq(
       scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).value,
       scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value,
     )
