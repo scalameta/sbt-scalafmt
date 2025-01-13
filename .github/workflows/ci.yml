@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-depth: 0
       - name: Set up JVM
         uses: actions/setup-java@v4
         with:
@@ -39,5 +39,4 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
           cache: 'sbt'
-
       - run: ./bin/scalafmt --test
