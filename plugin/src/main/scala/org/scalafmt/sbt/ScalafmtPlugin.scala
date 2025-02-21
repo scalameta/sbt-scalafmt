@@ -1,6 +1,7 @@
 package org.scalafmt.sbt
 
 import java.io.OutputStreamWriter
+import java.nio.file.Files
 import java.nio.file.Path
 
 import sbt.Keys._
@@ -13,15 +14,10 @@ import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
 import sbt.util.Level
 
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
+import scala.util._
 
-import org.scalafmt.interfaces.RepositoryCredential
-import org.scalafmt.interfaces.Scalafmt
-import org.scalafmt.sysops.AbsoluteFile
-import org.scalafmt.sysops.FileOps
-import org.scalafmt.sysops.GitOps
+import org.scalafmt.interfaces._
+import org.scalafmt.sysops._
 
 import complete.DefaultParsers._
 
@@ -192,7 +188,7 @@ object ScalafmtPlugin extends AutoPlugin {
             (_: Path) => true
           case Success(x) =>
             log.debug(s"considering ${x.length} files $gitMessage")
-            FileOps.getFileMatcher(x.map(_.path))
+            getFileMatcher(x.map(_.path))
         }
       }
 
@@ -519,5 +515,27 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtPrintDiff := false,
     scalafmtDetailedError := false,
   )
+
+  private def getFileMatcher(paths: Seq[Path]): Path => Boolean = {
+    val dirBuilder = Seq.newBuilder[Path]
+    val fileBuilder = Set.newBuilder[Path]
+    paths.foreach(path =>
+      if (Files.isRegularFile(path)) fileBuilder += path else dirBuilder += path,
+    )
+    val dirs = dirBuilder.result()
+    val files = fileBuilder.result()
+    x =>
+      files(x) || {
+        val filename = x.toString
+        val sep = x.getFileSystem.getSeparator
+        dirs.exists { dir =>
+          val dirname = dir.toString
+          filename.startsWith(dirname) && {
+            filename.length == dirname.length ||
+            filename.startsWith(sep, dirname.length)
+          }
+        }
+      }
+  }
 
 }
