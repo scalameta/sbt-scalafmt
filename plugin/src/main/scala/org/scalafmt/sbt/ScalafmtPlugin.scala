@@ -91,6 +91,9 @@ object ScalafmtPlugin extends AutoPlugin {
   private val scalafmtDoFormatOnCompile =
     taskKey[Unit]("Format Scala source files if scalafmtOnCompile is on.")
 
+  private val scalafmtNoThrow =
+    taskKey[Unit]("Format Scala sources with scalafmt, ignore failures.")
+
   private val scalaConfig = scalafmtConfig.map { f =>
     if (f.exists()) f.toPath
     else throw messageException(s"File does not exist: ${f.toPath}")
@@ -463,8 +466,10 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtSbt := getScalafmtSbtTasks(scalafmtSbtTask).value,
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
+    scalafmtNoThrow := getScalafmtSourcesTask(scalafmtTask, noThrow = true)
+      .result.unit.value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
-      if (scalafmtOnCompile.value) resolvedScoped.value.scope / scalafmt
+      if (scalafmtOnCompile.value) resolvedScoped.value.scope / scalafmtNoThrow
       else Def.task(())
     }.value,
     Compile / sources := (Compile / sources).dependsOn(scalafmtDoFormatOnCompile)
