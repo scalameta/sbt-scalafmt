@@ -52,6 +52,7 @@ $ newer p8/src/main/scala/Test2.scala timestamp
 # scalafmt fails if it failed to parse the code.
 -> p10/scalafmt
 -> p10/scalafmtCheck
+-> p10/compile
 
 # scalafmt fails if .scalafmt.conf is invalid.
 -> p11/scalafmt

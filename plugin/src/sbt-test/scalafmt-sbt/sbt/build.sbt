@@ -42,6 +42,7 @@ lazy val p9 = project.settings(
   scalaVersion := "2.12.1"
 )
 lazy val p10 = project.settings(
+  scalafmtOnCompile := true,
   scalaVersion := "2.12.1"
 )
 lazy val p11 = project.settings(
