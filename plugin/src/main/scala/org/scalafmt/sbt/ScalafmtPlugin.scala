@@ -452,7 +452,7 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   }
 
-  lazy val scalafmtConfigSettings: Seq[Def.Setting[_]] = Seq(
+  def scalafmtConfigSettings(conf: Configuration) = inConfig(conf)(Seq(
     scalafmt := getScalafmtSourcesTask(scalafmtTask).value,
     scalafmtIncremental := scalafmt.value,
     scalafmtSbt := getScalafmtSbtTasks(scalafmtSbtTask).value,
@@ -492,16 +492,16 @@ object ScalafmtPlugin extends AutoPlugin {
         ),
       ).formatSources(absFiles, Nil)
     },
-  )
+  ))
 
   private val anyConfigsInThisProject =
     ScopeFilter(configurations = inAnyConfiguration)
 
   override def projectSettings: Seq[Def.Setting[_]] =
-    Seq(Compile, Test, IntegrationTest)
-      .flatMap(inConfig(_)(scalafmtConfigSettings)) ++ Seq(
-      scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).value,
-      scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject).value,
+    Seq(Compile, Test, IntegrationTest).flatMap(scalafmtConfigSettings) ++ Seq(
+      scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).map(_ => ()).value,
+      scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject)
+        .map(_ => ()).value,
     )
 
   override def buildSettings: Seq[Def.Setting[_]] =
