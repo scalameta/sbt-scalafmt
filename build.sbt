@@ -60,7 +60,7 @@ lazy val plugin = project.enablePlugins(SbtPlugin).settings(
   pluginCrossBuild / sbtVersion := {
     scalaBinaryVersion.value match {
       case "2.12" => "1.2.8"
-      case _ => "2.0.0-M3"
+      case _ => "2.0.0-M4"
     }
   },
   conflictWarning := {
