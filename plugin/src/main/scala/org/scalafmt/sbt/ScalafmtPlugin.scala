@@ -392,10 +392,11 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private def getScalafmtSourcesTask(
       f: (Seq[File], Seq[File], FormatSession) => InitTask,
+      noThrow: Boolean = false,
   ) = Def.taskDyn[Unit] {
     val sources = (scalafmt / unmanagedSources).?.value.getOrElse(Seq.empty)
     val dirs = (scalafmt / unmanagedSourceDirectories).?.value.getOrElse(Nil)
-    getScalafmtTask(f)(sources, dirs, scalaConfig.value)
+    getScalafmtTask(f, sources, dirs, scalaConfig.value, noThrow = noThrow)
   }
 
   private def scalafmtSbtTask(
@@ -423,14 +424,18 @@ object ScalafmtPlugin extends AutoPlugin {
       func: (Seq[File], Seq[File], FormatSession) => InitTask,
   )(tuples: (Seq[File], Seq[File], Path)*) = {
     val tasks = tuples.map { case (files, dirs, config) =>
-      getScalafmtTask(func)(files, dirs, config)
+      getScalafmtTask(func, files, dirs, config)
     }
     Def.sequential(tasks.tail.toList, tasks.head)
   }
 
   private def getScalafmtTask(
       func: (Seq[File], Seq[File], FormatSession) => InitTask,
-  )(files: Seq[File], dirs: Seq[File], config: Path) = Def.taskDyn[Unit] {
+      files: Seq[File],
+      dirs: Seq[File],
+      config: Path,
+      noThrow: Boolean = false,
+  ) = Def.taskDyn[Unit] {
     if (files.isEmpty) Def.task(())
     else {
       val session = new FormatSession(
@@ -444,7 +449,7 @@ object ScalafmtPlugin extends AutoPlugin {
         new ErrorHandling(
           scalafmtPrintDiff.value,
           scalafmtLogOnEachError.value,
-          scalafmtFailOnErrors.value,
+          !noThrow && scalafmtFailOnErrors.value,
           scalafmtDetailedError.value,
         ),
       )
