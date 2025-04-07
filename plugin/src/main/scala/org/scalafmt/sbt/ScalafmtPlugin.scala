@@ -283,9 +283,8 @@ object ScalafmtPlugin extends AutoPlugin {
               s"$baseDir: ${files.length} files aren't formatted properly:\n"
             log.warn(files.sorted.mkString(prefix, "\n", ""))
           }
-          val result = checkFilteredSources(filesToCheck)
-          prev
-            .copy(failedScalafmtCheck = result.failedScalafmtCheck | prevFailed)
+          val failed = checkFilteredSources(filesToCheck).failedScalafmtCheck
+          prev.copy(failedScalafmtCheck = failed | prevFailed)
       }
       throwOnFailure(result)
     }
@@ -320,27 +319,20 @@ object ScalafmtPlugin extends AutoPlugin {
         sources: Seq[File],
     )(
         f: (ChangeReport[File], Boolean, ScalafmtAnalysis) => ScalafmtAnalysis,
-    ): ScalafmtAnalysis = {
-      // use prevTracker to share previous values between tasks
-      val prevTracker = Tracked
-        .lastOutput[Unit, ScalafmtAnalysis](cacheStoreFactory.make("last")) {
-          (_, prev0) =>
-            val prev = prev0.getOrElse(ScalafmtAnalysis(Set.empty))
-            val tracker = Tracked.inputChanged[HashFileInfo, ScalafmtAnalysis](
-              cacheStoreFactory.make("config"),
-            ) { case (configChanged, configHash) =>
-              Tracked.diffOutputs(
-                cacheStoreFactory.make("output-diff"),
-                FileInfo.lastModified,
-              )(sources.toSet) { (outDiff: ChangeReport[File]) =>
-                log.debug(outDiff.toString())
-                f(outDiff, configChanged, prev)
-              }
-            }
-            tracker(FileInfo.hash(config.toFile))
-        }
-      prevTracker(())
-    }
+    ): ScalafmtAnalysis = Tracked.lastOutput(cacheStoreFactory.make("last")) {
+      (_: Unit, prev: Option[ScalafmtAnalysis]) =>
+        // use prev tracker to share previous values between tasks
+        def onChange(changed: Boolean, hfi: HashFileInfo): ScalafmtAnalysis =
+          Tracked.diffOutputs(
+            cacheStoreFactory.make("output-diff"),
+            FileInfo.lastModified,
+          )(sources.toSet) { (outDiff: ChangeReport[File]) =>
+            log.debug(outDiff.toString())
+            f(outDiff, changed, prev.getOrElse(ScalafmtAnalysis(Set.empty)))
+          }
+        Tracked.inputChanged(cacheStoreFactory.make("config"))(onChange)
+          .apply(FileInfo.hash(config.toFile))
+    }.apply(())
 
     private def throwOnFailure(analysis: ScalafmtAnalysis): Unit = {
       val failed = analysis.failedScalafmtCheck
