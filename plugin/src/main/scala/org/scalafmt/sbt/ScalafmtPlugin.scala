@@ -499,9 +499,9 @@ object ScalafmtPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(Compile, Test, IntegrationTest).flatMap(scalafmtConfigSettings) ++ Seq(
-      scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).map(_ => ()).value,
+      scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).unit.value,
       scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject)
-        .map(_ => ()).value,
+        .unit.value,
     )
 
   override def buildSettings: Seq[Def.Setting[_]] =
@@ -536,6 +536,12 @@ object ScalafmtPlugin extends AutoPlugin {
           }
         }
       }
+  }
+
+  private implicit class ImplicitInitialize[T](
+      private val obj: Def.Initialize[Task[T]],
+  ) extends AnyVal {
+    def unit = obj.map(_ => ())
   }
 
 }
