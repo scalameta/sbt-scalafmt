@@ -34,7 +34,7 @@ inThisBuild(List(
   ),
   resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalaVersion := "2.12.20",
-  crossScalaVersions += "3.6.4",
+  crossScalaVersions += "3.7.0",
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
