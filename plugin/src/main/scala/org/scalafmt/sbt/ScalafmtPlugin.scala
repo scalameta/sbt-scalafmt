@@ -145,7 +145,7 @@ object ScalafmtPlugin extends AutoPlugin {
     private val scalafmtSession = {
       val repositories = resolvers.collect { case r: MavenRepository => r.root }
       val repoCredentials = credentials.flatMap { c =>
-        Try(Credentials.toDirect(c)).toOption
+        Try(CredentialsUtils.toDirect(c)).toOption
           .map(dc => new RepositoryCredential(dc.host, dc.userName, dc.passwd))
       }
 
