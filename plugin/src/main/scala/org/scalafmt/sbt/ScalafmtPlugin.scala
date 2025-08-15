@@ -500,11 +500,12 @@ object ScalafmtPlugin extends AutoPlugin {
     ScopeFilter(configurations = inAnyConfiguration)
 
   override def projectSettings: Seq[Def.Setting[_]] =
-    Seq(Compile, Test, IntegrationTest).flatMap(scalafmtConfigSettings) ++ Seq(
-      scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).unit.value,
-      scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject)
-        .unit.value,
-    )
+    ScalafmtPluginConfigurations.supported.flatMap(scalafmtConfigSettings) ++
+      Seq(
+        scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).unit.value,
+        scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject)
+          .unit.value,
+      )
 
   override def buildSettings: Seq[Def.Setting[_]] =
     Seq(scalafmtConfig := (ThisBuild / baseDirectory).value / ".scalafmt.conf")
