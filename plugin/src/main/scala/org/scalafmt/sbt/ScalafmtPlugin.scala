@@ -4,22 +4,22 @@ import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.nio.file.Path
 
-import sbt.Keys._
+import sbt.Keys.*
 // format: off
 import sbt.{given, _}
 // format: on
 import sbt.librarymanagement.MavenRepository
-import sbt.util.CacheImplicits._
+import sbt.util.CacheImplicits.*
 import sbt.util.CacheStoreFactory
 import sbt.util.FileInfo
 import sbt.util.Level
 
-import scala.util._
+import scala.util.*
 
-import org.scalafmt.interfaces._
-import org.scalafmt.sysops._
+import org.scalafmt.interfaces.*
+import org.scalafmt.sysops.*
 
-import complete.DefaultParsers._
+import complete.DefaultParsers.*
 
 object ScalafmtPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
@@ -72,7 +72,7 @@ object ScalafmtPlugin extends AutoPlugin {
       settingKey[Boolean]("Enables full diff output when running check.")
   }
 
-  import autoImport._
+  import autoImport.*
 
   case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
   object ScalafmtAnalysis {
@@ -156,8 +156,8 @@ object ScalafmtPlugin extends AutoPlugin {
       }
 
       val scalafmtSession = globalInstance.withReporter(reporter)
-        .withMavenRepositories(repositories: _*)
-        .withRepositoryCredentials(repoCredentials: _*)
+        .withMavenRepositories(repositories*)
+        .withRepositoryCredentials(repoCredentials*)
         .createSession(config.toAbsolutePath)
       if (scalafmtSession == null) throw messageException(
         "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt",
@@ -196,12 +196,12 @@ object ScalafmtPlugin extends AutoPlugin {
       }
 
       if (filterMode == FilterMode.diffDirty)
-        getFromFiles(gitOps.status(absDirs: _*), "status")
+        getFromFiles(gitOps.status(absDirs*), "status")
       else if (filterMode.startsWith(FilterMode.diffRefPrefix)) {
         val branch = filterMode.substring(FilterMode.diffRefPrefix.length)
-        getFromFiles(gitOps.diff(branch, absDirs: _*), s"diff $branch")
+        getFromFiles(gitOps.diff(branch, absDirs*), s"diff $branch")
       } else if (filterMode != FilterMode.none && scalafmtSession.isGitOnly)
-        getFromFiles(gitOps.lsTree(absDirs: _*), "ls-files")
+        getFromFiles(gitOps.lsTree(absDirs*), "ls-files")
       else {
         log.debug("considering all files (no git)")
         _ => true
@@ -375,15 +375,13 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession,
-  ) = Def.task(session.formatTrackedSources(sources, dirs))
-    .tag(ScalafmtTagPack: _*)
+  ) = Def.task(session.formatTrackedSources(sources, dirs)).tag(ScalafmtTagPack*)
 
   private def scalafmtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession,
-  ) = Def.task(session.checkTrackedSources(sources, dirs))
-    .tag(ScalafmtTagPack: _*)
+  ) = Def.task(session.checkTrackedSources(sources, dirs)).tag(ScalafmtTagPack*)
 
   private def getScalafmtSourcesTask(
       f: (Seq[File], Seq[File], FormatSession) => InitTask,
@@ -398,13 +396,13 @@ object ScalafmtPlugin extends AutoPlugin {
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession,
-  ) = Def.task(session.formatSources(sources, dirs)).tag(ScalafmtTagPack: _*)
+  ) = Def.task(session.formatSources(sources, dirs)).tag(ScalafmtTagPack*)
 
   private def scalafmtSbtCheckTask(
       sources: Seq[File],
       dirs: Seq[File],
       session: FormatSession,
-  ) = Def.task(session.checkSources(sources, dirs)).tag(ScalafmtTagPack: _*)
+  ) = Def.task(session.checkSources(sources, dirs)).tag(ScalafmtTagPack*)
 
   private def getScalafmtSbtTasks(
       func: (Seq[File], Seq[File], FormatSession) => InitTask,
@@ -499,7 +497,7 @@ object ScalafmtPlugin extends AutoPlugin {
   private val anyConfigsInThisProject =
     ScopeFilter(configurations = inAnyConfiguration)
 
-  override def projectSettings: Seq[Def.Setting[_]] =
+  override def projectSettings: Seq[Def.Setting[?]] =
     ScalafmtPluginConfigurations.supported.flatMap(scalafmtConfigSettings) ++
       Seq(
         scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).unit.value,
@@ -507,10 +505,10 @@ object ScalafmtPlugin extends AutoPlugin {
           .unit.value,
       )
 
-  override def buildSettings: Seq[Def.Setting[_]] =
+  override def buildSettings: Seq[Def.Setting[?]] =
     Seq(scalafmtConfig := (ThisBuild / baseDirectory).value / ".scalafmt.conf")
 
-  override def globalSettings: Seq[Def.Setting[_]] = Seq(
+  override def globalSettings: Seq[Def.Setting[?]] = Seq(
     scalafmtFilter := "",
     scalafmtOnCompile := false,
     scalafmtLogOnEachError := false,

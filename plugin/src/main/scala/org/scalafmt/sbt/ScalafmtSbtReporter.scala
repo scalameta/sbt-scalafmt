@@ -14,7 +14,7 @@ class ScalafmtSbtReporter(
     out: OutputStreamWriter,
     errorHandling: ErrorHandling,
 ) extends ScalafmtReporter {
-  import ScalafmtSbtReporter._
+  import ScalafmtSbtReporter.*
 
   override def error(file: Path, message: String): Unit =
     error(file, message, null)

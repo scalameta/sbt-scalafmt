@@ -1,8 +1,8 @@
 package org.scalafmt.sbt
 
-import org.scalafmt.CompatCollections.JavaConverters._
+import org.scalafmt.CompatCollections.JavaConverters.*
 
-import difflib.DiffUtils._
+import difflib.DiffUtils.*
 
 object DiffUtils {
 
