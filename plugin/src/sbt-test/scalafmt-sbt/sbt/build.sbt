@@ -12,63 +12,63 @@ lazy val p123 = project
   )
 
 lazy val p1 = project.settings(
-  scalaVersion := "2.10.5"
+  scalaVersion := "2.10.7"
 )
 lazy val p2 = project.settings(
-  scalaVersion := "2.11.8"
+  scalaVersion := "2.11.12"
 )
 lazy val p3 = project.settings(
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 lazy val p4 = project.settings(
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 lazy val p5 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtOnCompile := true
 )
 lazy val p6 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtConfig := file(".scalafmt6.conf")
 )
 lazy val p7 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtConfig := file(".scalafmt_does_not_exist.conf")
 )
 lazy val p8 = project.settings(
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 lazy val p9 = project.settings(
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 lazy val p10 = project.settings(
   scalafmtOnCompile := true,
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 lazy val p11 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtConfig := file(".scalafmt11.conf")
 )
 lazy val p12 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtConfig := file(".scalafmt12.conf")
 )
 lazy val p13 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
 )
 lazy val p14 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
 )
 lazy val p15 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtConfig := file(".scalafmt15.conf")
 )
 lazy val p16 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   scalafmtConfig := file(".scalafmt16.conf")
 )
 lazy val p17 = project.settings(
-  scalaVersion := "2.12.1",
+  scalaVersion := "2.12.20",
   TaskKey[Unit](
     label = "failIffScalafmtCheckFailsBecauseProcessingInaccessibleSource",
     description = "fails if and only if the wrapped scalafmtCheck fails with a FileNotFoundException "
@@ -84,18 +84,18 @@ lazy val p17 = project.settings(
 )
 lazy val p18 = project.settings(
   scalafmtConfig := file(".scalafmt18.conf"),
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 lazy val p19 = project
   .in(file("p19/jvm"))
   .settings(
     scalafmtConfig := file(".scalafmt19.conf"),
     Compile / unmanagedSourceDirectories += baseDirectory.value / "../shared/src",
-    scalaVersion := "2.12.1"
+    scalaVersion := "2.12.20"
   )
 lazy val p20 = project.settings(
   scalafmtConfig := file(".scalafmt20.conf"),
-  scalaVersion := "2.12.1"
+  scalaVersion := "2.12.20"
 )
 
 def assertContentsEqual(file: File, expected: String): Unit = {
