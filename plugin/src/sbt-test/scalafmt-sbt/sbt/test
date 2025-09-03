@@ -81,7 +81,9 @@ $ copy-file p13/src/test/scala/Test3.scala p13/src/main/scala/Test3.scala
 > p13/scalafmtCheck
 -$ must-mirror p13/src/test/scala/Test3.scala p13/src/main/scala/Test3.scala
 ######## cache invalidation expected when a file was updated
-> updateLastModified p13/src/main/scala/Test.scala
+$ exec chmod 666 p13/src/main/scala/Test.scala
+$ touch p13/src/main/scala/Test.scala
+$ exec chmod 000 p13/src/main/scala/Test.scala
 -> p13/scalafmt
 
 > p14/scalafmtCheck
@@ -100,7 +102,9 @@ $ copy-file p14/src/test/scala/Test3.scala p14/src/main/scala/Test3.scala
 > p14/scalafmtCheck
 > p14/scalafmt
 ######## cache invalidation expected when a file was updated
-> updateLastModified p14/src/main/scala/Test.scala
+$ exec chmod 666 p14/src/main/scala/Test.scala
+$ touch p14/src/main/scala/Test.scala
+$ exec chmod 000 p14/src/main/scala/Test.scala
 -> p14/scalafmtCheck
 
 > p15/scalafmt

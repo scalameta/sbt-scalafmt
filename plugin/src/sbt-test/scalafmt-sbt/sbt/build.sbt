@@ -5,16 +5,6 @@ ThisBuild / fork := true
 
 lazy val p123 = project
   .in(file("."))
-  .settings(
-    InputKey[Unit]("updateLastModified") := {
-      import sbt.internal.util.complete.DefaultParsers._
-      import scala.sys.process.Process
-      val f = spaceDelimited("").parsed.head
-      Process(Seq("chmod", "666", f)).!
-      IO.touch(file(f))
-      Process(Seq("chmod", "000", f)).!
-    }
-  )
   .aggregate(
     p1,
     p2,
