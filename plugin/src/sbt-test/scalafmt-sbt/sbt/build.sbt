@@ -5,6 +5,16 @@ ThisBuild / fork := true
 
 lazy val p123 = project
   .in(file("."))
+  .settings(
+    InputKey[Unit]("updateLastModified") := {
+      import sbt.internal.util.complete.DefaultParsers._
+      import scala.sys.process.Process
+      val f = spaceDelimited("").parsed.head
+      Process(Seq("chmod", "666", f)).!
+      IO.touch(file(f))
+      Process(Seq("chmod", "000", f)).!
+    }
+  )
   .aggregate(
     p1,
     p2,
@@ -69,12 +79,12 @@ lazy val p16 = project.settings(
 )
 lazy val p17 = project.settings(
   scalaVersion := "2.12.20",
-  TaskKey[Unit](
+  InputKey[Unit](
     label = "failIffScalafmtCheckFailsBecauseProcessingInaccessibleSource",
     description = "fails if and only if the wrapped scalafmtCheck fails with a FileNotFoundException "
   ) := {
-    (Compile / scalafmtCheck).result.value match {
-      case Inc(inc: Incomplete) =>
+    (Compile / scalafmtCheck).result.value.toEither match {
+      case Left(inc: Incomplete) =>
         inc.directCause.collect {
           case e: java.io.FileNotFoundException => throw e
         }
@@ -115,7 +125,7 @@ def assertContentsEqual(file: File, expected: String): Unit = {
   }
 }
 
-TaskKey[Unit]("changeTest2") := {
+InputKey[Unit]("changeTest2") := {
   IO.write(file(s"p8/src/main/scala/Test2.scala"),
     """
       |object
@@ -129,7 +139,7 @@ TaskKey[Unit]("changeTest2") := {
   )
 }
 
-TaskKey[Unit]("check") := {
+InputKey[Unit]("check") := {
   (1 to 4).foreach { i =>
     val expectedTest =
       """
@@ -283,7 +293,7 @@ TaskKey[Unit]("check") := {
 }
 
 
-TaskKey[Unit]("checkManagedSources") := {
+InputKey[Unit]("checkManagedSources") := {
   assertContentsEqual(
     file("project/x/Something.scala"),
     """
