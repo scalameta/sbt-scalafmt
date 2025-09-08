@@ -58,7 +58,8 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   // We honestly probably don't need to, so if this ever causes issues, rip it out.
   pluginCrossBuild / sbtVersion := {
     scalaBinaryVersion.value match {
-      case "2.12" => "1.2.8"
+      case "2.12" =>
+        if (scala.util.Properties.isJavaAtLeast("17")) "1.9.0" else "1.2.8"
       case _ => "2.0.0-RC4"
     }
   },
