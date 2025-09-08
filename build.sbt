@@ -44,7 +44,7 @@ val scalafmtVersion = "3.9.9"
 onLoadMessage :=
   s"Welcome to sbt-scalafmt ${version.value} (scalafmt $scalafmtVersion)"
 
-lazy val plugin = project.enablePlugins(SbtPlugin).settings(
+lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   moduleName := "sbt-scalafmt",
   libraryDependencies ++= List(
     "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
