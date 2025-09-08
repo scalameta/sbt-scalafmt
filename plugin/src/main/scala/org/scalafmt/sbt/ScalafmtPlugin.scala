@@ -303,9 +303,16 @@ object ScalafmtPlugin extends AutoPlugin {
         val diff =
           if (errorHandling.printDiff) DiffUtils
             .unifiedDiff("/" + asRelative(file), input, output)
-          else ""
-        val suffix = if (diff.isEmpty) "" else "\n" + diff
-        log.warn(s"$file isn't formatted properly!$suffix")
+          else Seq.empty
+        val prefix = s"$file isn't formatted properly!"
+        val msg =
+          if (diff.isEmpty) prefix
+          else {
+            val sb = new StringBuilder(prefix)
+            diff.addString(sb, "\n", "\n", "")
+            sb.toString()
+          }
+        log.warn(msg)
         unformatted += file
         ()
       }
