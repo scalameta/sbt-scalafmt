@@ -11,10 +11,10 @@ object DiffUtils {
       val last = if (addEol) Iterator.single("") else Iterator.empty
       (code.linesIterator ++ last).toIndexedSeq.asJava
     }
-    val a = jList(input, false)
+    val a = jList(input, addEol = false)
     // output always has EOL; if input doesn't, pretend output has extra line
     val inputNoEol = input.lastOption.forall(x => x != '\n' && x != '\r')
-    val b = jList(output, inputNoEol)
+    val b = jList(output, addEol = inputNoEol)
     val patch = generateUnifiedDiff(s"a$file", s"b$file", a, diff(a, b), 1)
     if (patch.isEmpty) "" else patch.iterator().asScala.mkString("\n")
   }
