@@ -33,7 +33,7 @@ inThisBuild(List(
     ),
   ),
   scalaVersion := "2.12.20",
-  crossScalaVersions += "3.7.2",
+  crossScalaVersions += "3.7.3",
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
