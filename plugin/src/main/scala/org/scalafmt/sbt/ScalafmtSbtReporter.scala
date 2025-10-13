@@ -1,8 +1,6 @@
 package org.scalafmt.sbt
 
-import java.io.OutputStreamWriter
-import java.io.PrintWriter
-import java.io.StringWriter
+import java.io.{OutputStreamWriter, PrintWriter, StringWriter}
 import java.nio.file.Path
 
 import sbt.util.Logger

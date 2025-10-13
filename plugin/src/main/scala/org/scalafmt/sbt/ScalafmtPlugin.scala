@@ -1,18 +1,13 @@
 package org.scalafmt.sbt
 
 import java.io.OutputStreamWriter
-import java.nio.file.Files
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 
 import sbt.Keys.*
-// format: off
-import sbt.{given, _}
-// format: on
 import sbt.librarymanagement.MavenRepository
 import sbt.util.CacheImplicits.*
-import sbt.util.CacheStoreFactory
-import sbt.util.FileInfo
-import sbt.util.Level
+import sbt.util.{CacheStoreFactory, FileInfo, Level}
+import sbt.{given, *}
 
 import scala.util.*
 
@@ -76,10 +71,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   case class ScalafmtAnalysis(failedScalafmtCheck: Set[File])
   object ScalafmtAnalysis {
-    import sjsonnew.:*:
-    import sjsonnew.IsoLList
-    import sjsonnew.LList
-    import sjsonnew.LNil
+    import sjsonnew.{:*:, IsoLList, LList, LNil}
     implicit val analysisIso
         : IsoLList.Aux[ScalafmtAnalysis, Set[File] :*: LNil] = LList.iso(
       (a: ScalafmtAnalysis) =>
