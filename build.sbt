@@ -1,12 +1,16 @@
-def parseTagVersion: String = {
-  import scala.sys.process._
-  // drop `v` prefix
-  "git describe --abbrev=0 --tags".!!.drop(1).trim
-}
-
 inThisBuild(List(
-  version ~= { dynVer =>
-    if (System.getenv("CI") != null) dynVer else s"$parseTagVersion-SNAPSHOT" // only for local publishing
+  // version is set dynamically by sbt-dynver, but let's adjust it
+  version := {
+    val curVersion = version.value
+    def dynVer(out: sbtdynver.GitDescribeOutput): String = {
+      def tagVersion = out.ref.dropPrefix
+      if (out.isCleanAfterTag) tagVersion
+      else if (System.getProperty("CI") == null) s"$tagVersion-next-SNAPSHOT" // modified for local builds
+      else if (out.commitSuffix.distance == 0) tagVersion
+      else if (sys.props.contains("backport.release")) tagVersion
+      else curVersion
+    }
+    dynverGitDescribeOutput.value.mkVersion(dynVer, curVersion)
   },
   organization := "org.scalameta",
   homepage := Some(url("https://github.com/scalameta/sbt-scalafmt")),
