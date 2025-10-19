@@ -64,7 +64,7 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
     scalaBinaryVersion.value match {
       case "2.12" =>
         if (scala.util.Properties.isJavaAtLeast("17")) "1.9.0" else "1.2.8"
-      case _ => "2.0.0-RC4"
+      case _ => "2.0.0-RC6"
     }
   },
   conflictWarning := {
