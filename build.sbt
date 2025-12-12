@@ -36,7 +36,7 @@ inThisBuild(List(
       url("https://github.com/tanishiking/"),
     ),
   ),
-  scalaVersion := "2.12.20",
+  scalaVersion := "2.12.21",
   crossScalaVersions += "3.7.4",
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
