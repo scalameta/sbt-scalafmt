@@ -455,14 +455,14 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtSbt := getScalafmtSbtTasks(scalafmtSbtTask).value,
     scalafmtCheck := getScalafmtSourcesTask(scalafmtCheckTask).value,
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
-    scalafmtNoThrow := getScalafmtSourcesTask(scalafmtTask, noThrow = true)
-      .result.unit.value,
+    scalafmtNoThrow :=
+      getScalafmtSourcesTask(scalafmtTask, noThrow = true).result.unit.value,
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) resolvedScoped.value.scope / scalafmtNoThrow
       else Def.task(())
     }.value,
-    Compile / sources := (Compile / sources).dependsOn(scalafmtDoFormatOnCompile)
-      .value,
+    Compile / sources :=
+      (Compile / sources).dependsOn(scalafmtDoFormatOnCompile).value,
     scalafmtOnly := {
       val files = spaceDelimited("<files>").parsed
       val absFiles = files.flatMap { fileS =>
