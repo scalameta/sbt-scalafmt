@@ -43,7 +43,7 @@ inThisBuild(List(
 ))
 publish / skip := true
 
-val scalafmtVersion = "3.10.6"
+val scalafmtVersion = "3.10.7"
 onLoadMessage :=
   s"Welcome to sbt-scalafmt ${version.value} (scalafmt $scalafmtVersion)"
 
