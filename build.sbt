@@ -1,3 +1,5 @@
+import scala.util.Properties.isJavaAtLeast
+
 inThisBuild(List(
   // version is set dynamically by sbt-dynver, but let's adjust it
   version := {
@@ -37,7 +39,7 @@ inThisBuild(List(
     ),
   ),
   scalaVersion := "2.12.21",
-  crossScalaVersions += "3.7.4",
+  crossScalaVersions += { if (isJavaAtLeast("17")) "3.8.1" else "3.7.4" },
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
@@ -62,9 +64,8 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   // We honestly probably don't need to, so if this ever causes issues, rip it out.
   pluginCrossBuild / sbtVersion := {
     scalaBinaryVersion.value match {
-      case "2.12" =>
-        if (scala.util.Properties.isJavaAtLeast("17")) "1.9.0" else "1.2.8"
-      case _ => "2.0.0-RC6"
+      case "2.12" => if (isJavaAtLeast("17")) "1.12.1" else "1.2.8"
+      case _ => "2.0.0-RC8"
     }
   },
   conflictWarning := {
@@ -73,6 +74,8 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
       case _ => conflictWarning.value
     }
   },
+  scalacOptions ++=
+    { if (scalaVersion.value.startsWith("3.8.")) Nil else Seq("-release:8") },
 )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.
