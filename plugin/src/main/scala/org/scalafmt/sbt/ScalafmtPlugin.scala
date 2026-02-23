@@ -20,6 +20,7 @@ object ScalafmtPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
 
   object autoImport {
+    @transient
     val scalafmt = taskKey[Unit]("Format Scala sources with scalafmt.")
 
     private[sbt] val ScalafmtTagPack =
@@ -34,21 +35,26 @@ object ScalafmtPlugin extends AutoPlugin {
     val scalafmtOnCompile = settingKey[Boolean](
       "Format Scala source files on compile, off by default.",
     )
+    @transient
     val scalafmtConfig = taskKey[File](
       "Location of .scalafmt.conf file. " +
         "If the file does not exist, exception is thrown.",
     )
+    @transient
     val scalafmtSbt =
       taskKey[Unit]("Format *.sbt and project/*.scala files for this sbt build.")
+    @transient
     val scalafmtSbtCheck = taskKey[Unit](
       "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
         "Does not write to files.",
     )
     val scalafmtOnly = inputKey[Unit]("Format a single given file.")
+    @transient
     val scalafmtAll = taskKey[Unit](
       "Execute the scalafmt task for all configurations in which it is enabled. " +
         "(By default this means the Compile and Test configurations.)",
     )
+    @transient
     val scalafmtCheckAll = taskKey[Unit](
       "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
         "(By default this means the Compile and Test configurations.)",
