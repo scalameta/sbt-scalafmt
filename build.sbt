@@ -1,5 +1,6 @@
 import scala.util.Properties.isJavaAtLeast
 
+val scalafmtVersion = "3.11.0"
 val scala2 = "2.12.21"
 val scala3 = "3.8.3"
 
@@ -51,7 +52,6 @@ inThisBuild(List(
 ))
 publish / skip := true
 
-val scalafmtVersion = "3.10.7"
 onLoadMessage :=
   s"Welcome to sbt-scalafmt ${version.value} (scalafmt $scalafmtVersion)"
 
