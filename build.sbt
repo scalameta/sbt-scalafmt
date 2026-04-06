@@ -1,7 +1,7 @@
 import scala.util.Properties.isJavaAtLeast
 
 val scala2 = "2.12.21"
-val scala3 = "3.7.4"
+val scala3 = if (isJavaAtLeast("17")) "3.8.3" else "3.7.4"
 
 inThisBuild(List(
   // version is set dynamically by sbt-dynver, but let's adjust it
@@ -68,7 +68,7 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   pluginCrossBuild / sbtVersion := {
     scalaBinaryVersion.value match {
       case "2.12" => if (isJavaAtLeast("17")) "1.9.0" else "1.2.8"
-      case _ => "2.0.0-RC6"
+      case _ => if (isJavaAtLeast("17")) "2.0.0-RC10" else "2.0.0-RC6"
     }
   },
   conflictWarning := {
@@ -77,6 +77,8 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
       case _ => conflictWarning.value
     }
   },
+  scalacOptions ++=
+    { if (scalaVersion.value.startsWith("3.8.")) Nil else Seq("-release:8") },
 )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.
