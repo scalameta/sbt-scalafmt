@@ -31,7 +31,8 @@ jobs:
       - run:
           # for git tests
           git config --global user.email "scalafmt@scalameta.org" && git config --global user.name "scalafmt"
-      - run: sbt "+ plugin/scripted"
+      - run: sbt test2
+      - run: sbt test3
 
   formatting:
     runs-on: ubuntu-latest
