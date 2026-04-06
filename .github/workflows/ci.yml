@@ -13,9 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         java:
-          - '8'
           - '17'
           - '21'
+          - '25'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -41,6 +41,6 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
           cache: 'sbt'
       - run: ./bin/scalafmt --test
