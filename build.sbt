@@ -3,6 +3,9 @@ import scala.util.Properties.isJavaAtLeast
 val scala2 = "2.12.21"
 val scala3 = if (isJavaAtLeast("17")) "3.8.3" else "3.7.4"
 
+addCommandAlias("test2", s"++$scala2 plugin/scripted")
+addCommandAlias("test3", s"++$scala3 plugin/scripted")
+
 inThisBuild(List(
   // version is set dynamically by sbt-dynver, but let's adjust it
   version := {
