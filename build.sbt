@@ -1,7 +1,7 @@
 import scala.util.Properties.isJavaAtLeast
 
 val scala2 = "2.12.21"
-val scala3 = if (isJavaAtLeast("17")) "3.8.3" else "3.7.4"
+val scala3 = "3.8.3"
 
 addCommandAlias("test2", s"++$scala2 plugin/scripted")
 addCommandAlias("test3", s"++$scala3 plugin/scripted")
@@ -55,6 +55,8 @@ val scalafmtVersion = "3.10.7"
 onLoadMessage :=
   s"Welcome to sbt-scalafmt ${version.value} (scalafmt $scalafmtVersion)"
 
+def isScala3 = Def.setting(scalaBinaryVersion.value == "3")
+
 lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   moduleName := "sbt-scalafmt",
   libraryDependencies ++= List(
@@ -69,19 +71,15 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   // For compat reasons we have this in here to ensure we are testing against 1.2.8
   // We honestly probably don't need to, so if this ever causes issues, rip it out.
   pluginCrossBuild / sbtVersion := {
-    scalaBinaryVersion.value match {
-      case "2.12" => if (isJavaAtLeast("17")) "1.9.0" else "1.2.8"
-      case _ => if (isJavaAtLeast("17")) "2.0.0-RC10" else "2.0.0-RC6"
-    }
+    if (!isScala3.value) if (isJavaAtLeast("17")) "1.9.0" else "1.2.8"
+    else if (!isJavaAtLeast("17")) sys.error("Scala 3 requires JDK 17+")
+    else "2.0.0-RC10"
   },
   conflictWarning := {
-    scalaBinaryVersion.value match {
-      case "3" => ConflictWarning("warn", Level.Warn, false)
-      case _ => conflictWarning.value
-    }
+    if (!isScala3.value) conflictWarning.value
+    else ConflictWarning("warn", Level.Warn, failOnConflict = false)
   },
-  scalacOptions ++=
-    { if (scalaVersion.value.startsWith("3.8.")) Nil else Seq("-release:8") },
+  scalacOptions += { if (isScala3.value) "-release:17" else "-release:8" },
 )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.
