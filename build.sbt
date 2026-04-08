@@ -63,7 +63,7 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
     "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
     "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion cross
       CrossVersion.for3Use2_13,
-    "org.scalameta" %% "scalafmt-dynamic" % scalafmtVersion cross
+    "org.scalameta" %% "scalafmt-dynamic-core" % scalafmtVersion cross
       CrossVersion.for3Use2_13,
   ),
   scriptedBufferLog := false,

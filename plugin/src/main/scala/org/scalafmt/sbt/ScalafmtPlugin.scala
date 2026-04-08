@@ -4,7 +4,7 @@ import java.io.OutputStreamWriter
 import java.nio.file.{Files, Path}
 
 import sbt.Keys.*
-import sbt.librarymanagement.MavenRepository
+import sbt.librarymanagement as lm
 import sbt.util.CacheImplicits.*
 import sbt.util.{CacheStoreFactory, FileInfo, Level}
 import sbt.{given, *}
@@ -102,7 +102,7 @@ object ScalafmtPlugin extends AutoPlugin {
   private type Output = String
   private type InitTask = Def.Initialize[Task[Unit]]
 
-  val globalInstance = Scalafmt.create(this.getClass.getClassLoader)
+  private val globalInstance = Scalafmt.create(this.getClass.getClassLoader)
     .withRespectProjectFilters(true)
 
   private object FilterMode {
@@ -133,6 +133,8 @@ object ScalafmtPlugin extends AutoPlugin {
       currentProject: ResolvedProject,
       filterMode: String,
       errorHandling: ErrorHandling,
+      dependencyResolution: lm.DependencyResolution,
+      updateConfiguration: lm.UpdateConfiguration,
   ) {
     locally {
       def cmp[A: Ordering](x: Iterable[A], y: Iterable[A]): Int = Ordering
@@ -162,8 +164,10 @@ object ScalafmtPlugin extends AutoPlugin {
       errorHandling,
     )
 
-    private val scalafmtSession = {
-      val repositories = resolvers.collect { case r: MavenRepository => r.root }
+    private def getFallbackInstance = {
+      val repositories = resolvers.collect { case r: lm.MavenRepository =>
+        r.root
+      }
       val repoCredentials = credentials.flatMap { c =>
         Try(CredentialsUtils.toDirect(c)).toOption
           .map(dc => new RepositoryCredential(dc.host, dc.userName, dc.passwd))
@@ -175,10 +179,21 @@ object ScalafmtPlugin extends AutoPlugin {
         info.mkString("Adding credentials [", ",", "]")
       }
 
-      val scalafmtSession = globalInstance.withReporter(reporter)
-        .withMavenRepositories(repositories*)
+      globalInstance.withMavenRepositories(repositories*)
         .withRepositoryCredentials(repoCredentials*)
-        .createSession(config.toAbsolutePath)
+    }
+
+    private val scalafmtSession = {
+      val factory = new ScalafmtSbtDependencyDownloader(
+        taskStreams,
+        dependencyResolution,
+        updateConfiguration,
+      )
+
+      val withFactory = globalInstance.withRepositoryPackageDownloader(factory)
+      val scalafmtSession = {
+        if (withFactory ne globalInstance) withFactory else getFallbackInstance
+      }.withReporter(reporter).createSession(config.toAbsolutePath)
       if (scalafmtSession == null) throw messageException(
         "failed to create formatting session. Please report bug to https://github.com/scalameta/sbt-scalafmt",
       )
@@ -473,6 +488,8 @@ object ScalafmtPlugin extends AutoPlugin {
           !noThrow && scalafmtFailOnErrors.value,
           scalafmtDetailedError.value,
         ),
+        dependencyResolution.value,
+        updateConfiguration.value,
       )
       func(files, dirs, session)
     }
@@ -519,6 +536,8 @@ object ScalafmtPlugin extends AutoPlugin {
           scalafmtFailOnErrors.value,
           scalafmtDetailedError.value,
         ),
+        dependencyResolution.value,
+        updateConfiguration.value,
       ).formatSources(absFiles, Nil)
     },
   ))
