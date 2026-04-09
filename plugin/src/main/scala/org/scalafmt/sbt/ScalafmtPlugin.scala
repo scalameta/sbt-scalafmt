@@ -124,6 +124,7 @@ object ScalafmtPlugin extends AutoPlugin {
   }
 
   private class FormatSession(
+      sbtVersion: String,
       config: Path,
       taskStreams: TaskStreams,
       cacheStoreFactory: CacheStoreFactory,
@@ -133,6 +134,27 @@ object ScalafmtPlugin extends AutoPlugin {
       filterMode: String,
       errorHandling: ErrorHandling,
   ) {
+    locally {
+      def cmp[A: Ordering](x: Iterable[A], y: Iterable[A]): Int = Ordering
+        .Iterable[A].compare(x, y)
+      val curvn = VersionNumber(sbtVersion)
+      (curvn._1 match {
+        case Some(1) => Some("1.12.9")
+        case Some(2) => Some("2.0.0-RC11")
+        case _ => None
+      }).foreach { v =>
+        val minvn = VersionNumber(v)
+        val cmpnum = cmp(minvn.numbers, curvn.numbers)
+        val bad = cmpnum > 0 || cmpnum == 0 && {
+          val mintags = minvn.tags
+          val curtags = curvn.tags
+          if (mintags.isEmpty) curtags.nonEmpty
+          else curtags.isEmpty || cmp(mintags, curtags) > 0
+        }
+        if (bad) sys.error(s"sbt-scalafmt requires sbt $v+ [current=$sbtVersion")
+      }
+    }
+
     private val log = new ScalafmtLogger(taskStreams.log)
     private val reporter = new ScalafmtSbtReporter(
       log,
@@ -437,6 +459,7 @@ object ScalafmtPlugin extends AutoPlugin {
     if (files.isEmpty) Def.task(())
     else {
       val session = new FormatSession(
+        sbtVersion.value,
         config,
         streams.value,
         (scalafmt / streams).value.cacheStoreFactory,
@@ -482,6 +505,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
       // scalaConfig
       new FormatSession(
+        sbtVersion.value,
         scalaConfig.value,
         streams.value,
         (scalafmt / streams).value.cacheStoreFactory,
