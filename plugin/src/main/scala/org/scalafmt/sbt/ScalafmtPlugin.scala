@@ -137,8 +137,9 @@ object ScalafmtPlugin extends AutoPlugin {
       updateConfiguration: lm.UpdateConfiguration,
   ) {
     locally {
-      def cmp[A: Ordering](x: Iterable[A], y: Iterable[A]): Int = Ordering
-        .Iterable[A].compare(x, y)
+      import Ordering.Implicits.*
+      def cmp[A](x: Seq[A], y: Seq[A])(implicit ord: Ordering[Seq[A]]): Int =
+        ord.compare(x, y)
       val curvn = VersionNumber(sbtVersion)
       (curvn._1 match {
         case Some(1) => Some("1.12.9")
