@@ -148,12 +148,9 @@ object ScalafmtPlugin extends AutoPlugin {
       }).foreach { v =>
         val minvn = VersionNumber(v)
         val cmpnum = cmp(minvn.numbers, curvn.numbers)
-        val bad = cmpnum > 0 || cmpnum == 0 && {
-          val mintags = minvn.tags
-          val curtags = curvn.tags
-          if (mintags.isEmpty) curtags.nonEmpty
-          else curtags.isEmpty || cmp(mintags, curtags) > 0
-        }
+        val bad = cmpnum > 0 ||
+          cmpnum == 0 && curvn.tags.nonEmpty &&
+          (minvn.tags.isEmpty || cmp(minvn.tags, curvn.tags) > 0)
         if (bad) sys.error(s"sbt-scalafmt requires sbt $v+ [current=$sbtVersion")
       }
     }
