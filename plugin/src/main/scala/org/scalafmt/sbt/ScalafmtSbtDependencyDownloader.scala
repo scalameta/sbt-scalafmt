@@ -35,7 +35,9 @@ class ScalafmtSbtDependencyDownloader(
       scalaBinaryVersion = lm.CrossVersion.binaryScalaVersion(scalaVersion),
       configurations = Vector.empty,
       checkExplicit = true,
-      filterImplicit = true,
+      filterImplicit = false, // must include scala-library in resolved jars;
+      // the classloader is fully isolated (parent = null), so all
+      // dependencies must be explicitly present (#440)
       overrideScalaVersion = false, // disables autoScalaLibrary
     )
     val moduleDependencies = dependencies.asScala
