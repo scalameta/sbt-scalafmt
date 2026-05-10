@@ -1,6 +1,6 @@
 import scala.util.Properties.isJavaAtLeast
 
-val scalafmtVersion = "3.11.0"
+val scalafmtVersion = "3.11.1"
 val scala2 = "2.12.21"
 val scala3 = "3.8.3"
 
@@ -61,10 +61,8 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   moduleName := "sbt-scalafmt",
   libraryDependencies ++= List(
     "com.googlecode.java-diff-utils" % "diffutils" % "1.3.0",
-    "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion cross
-      CrossVersion.for3Use2_13,
-    "org.scalameta" %% "scalafmt-dynamic-core" % scalafmtVersion cross
-      CrossVersion.for3Use2_13,
+    "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion,
+    "org.scalameta" %% "scalafmt-dynamic-core" % scalafmtVersion,
   ),
   scriptedBufferLog := false,
   scriptedLaunchOpts += s"-Dplugin.version=${version.value}",
