@@ -14,9 +14,23 @@ import org.scalafmt.interfaces.*
 
 class ScalafmtSbtDependencyDownloader(
     taskStreams: TaskStreams,
-    dependencyResolution: lm.DependencyResolution,
+    csrConfiguration: lmcoursier.CoursierConfiguration,
     updateConfiguration: lm.UpdateConfiguration,
 ) extends RepositoryPackageDownloaderFactory with RepositoryPackageDownloader {
+  // 2.6.0 (537203c) switched from a bundled coursier to sbt's resolver, so
+  // the project's csrConfiguration now flows into scalafmt-cli's parent-null
+  // URLClassLoader. Keep the infrastructure (resolvers, credentials, cache),
+  // strip the policy — those are rules for the user's deps, not ours.
+  private val dependencyResolution: lm.DependencyResolution = lmcoursier
+    .CoursierDependencyResolution(
+      csrConfiguration.withForceVersions(Vector.empty)
+        .withExcludeDependencies(Vector.empty).withReconciliation(Vector.empty)
+        .withStrict(None).withSameVersions(Seq.empty)
+        .withFallbackDependencies(Vector.empty)
+        .withInterProjectDependencies(Vector.empty)
+        .withExtraProjects(Vector.empty),
+    )
+
   override def create(
       reporter: ScalafmtReporter,
       properties: RepositoryProperties,
