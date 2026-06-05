@@ -133,7 +133,7 @@ object ScalafmtPlugin extends AutoPlugin {
       currentProject: ResolvedProject,
       filterMode: String,
       errorHandling: ErrorHandling,
-      dependencyResolution: lm.DependencyResolution,
+      csrConfiguration: lmcoursier.CoursierConfiguration,
       updateConfiguration: lm.UpdateConfiguration,
   ) {
     locally {
@@ -184,7 +184,7 @@ object ScalafmtPlugin extends AutoPlugin {
     private val scalafmtSession = {
       val factory = new ScalafmtSbtDependencyDownloader(
         taskStreams,
-        dependencyResolution,
+        csrConfiguration,
         updateConfiguration,
       )
 
@@ -486,7 +486,7 @@ object ScalafmtPlugin extends AutoPlugin {
           !noThrow && scalafmtFailOnErrors.value,
           scalafmtDetailedError.value,
         ),
-        dependencyResolution.value,
+        csrConfiguration.value,
         updateConfiguration.value,
       )
       func(files, dirs, session)
@@ -534,7 +534,7 @@ object ScalafmtPlugin extends AutoPlugin {
           scalafmtFailOnErrors.value,
           scalafmtDetailedError.value,
         ),
-        dependencyResolution.value,
+        csrConfiguration.value,
         updateConfiguration.value,
       ).formatSources(absFiles, Nil)
     },

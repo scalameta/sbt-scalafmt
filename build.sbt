@@ -64,6 +64,15 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
     "org.scalameta" %% "scalafmt-sysops" % scalafmtVersion,
     "org.scalameta" %% "scalafmt-dynamic-core" % scalafmtVersion,
   ),
+  libraryDependencies ++= {
+    // scaladoc reads lm-coursier's TASTy, which references the compile-time-only
+    // @dataclass.data annotation; same workaround as in sbt's own build
+    // (sbt/sbt, modules depending on lm-coursier), see
+    // https://github.com/scala/scala3/issues/18487
+    if (isScala3.value)
+      List("net.hamnaberg" %% "dataclass-annotation" % "0.3.0" % Provided)
+    else Nil
+  },
   scriptedBufferLog := false,
   scriptedLaunchOpts += s"-Dplugin.version=${version.value}",
   // For compat reasons we have this in here to ensure we are testing against 1.2.8
