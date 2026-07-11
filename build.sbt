@@ -1,6 +1,6 @@
 import scala.util.Properties.isJavaAtLeast
 
-val scalafmtVersion = "3.11.1"
+val scalafmtVersion = "3.11.2"
 val scala2 = "2.12.21"
 val scala3 = "3.8.4"
 
