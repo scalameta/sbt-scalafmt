@@ -200,9 +200,10 @@ object ScalafmtPlugin extends AutoPlugin {
 
     private lazy val baseDir: Path = currentProject.base.getCanonicalFile.toPath
 
+    // sources reaching this method have already been canonicalized in filterFiles
     @inline
-    private def asRelative(file: File): String = baseDir
-      .relativize(file.getCanonicalFile.toPath).toString
+    private def asRelative(file: File): String = baseDir.relativize(file.toPath)
+      .toString
 
     private def filterFiles(sources: Seq[File], dirs: Seq[File]): Seq[File] = {
       val filter = getFileFilter(dirs)
