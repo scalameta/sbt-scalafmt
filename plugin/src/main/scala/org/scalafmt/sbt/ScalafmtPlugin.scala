@@ -2,6 +2,8 @@ package org.scalafmt.sbt
 
 import java.io.OutputStreamWriter
 import java.nio.file.{Files, Path}
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{Callable, ExecutionException, Executors}
 
 import sbt.Keys.*
 import sbt.librarymanagement as lm
@@ -249,36 +251,63 @@ object ScalafmtPlugin extends AutoPlugin {
       }
     }
 
-    private def withFormattedSources[T](initial: T, sources: Seq[File])(
-        onFormat: (T, File, Input, Output) => T,
-    ): T = {
-      var res = initial
-      var good = 0
-      var bad = 0
-      sources.foreach { file =>
+    // Reads and formats each source. The (thread-safe) read+format step may run
+    // concurrently when parallelism > 1; onFormat is always invoked
+    // sequentially, in source order, for files whose formatting changed them, so
+    // callers need no synchronization of their own.
+    private def withFormattedSources(
+        sources: Seq[File],
+    )(onFormat: (File, Input, Output) => Unit): Unit = {
+      val good = new AtomicInteger
+      val bad = new AtomicInteger
+      // returns the changed triple, or None if unreadable, failed or unchanged;
+      // may throw (via reporter.error) when errorHandling.failOnErrors is set
+      def formatOne(file: File): Option[(File, Input, Output)] = {
         val path = file.toPath.toAbsolutePath
         Try(IO.read(file)) match {
           case Failure(x) =>
             reporter.error(path, "Failed to read", x)
-            bad += 1
+            bad.incrementAndGet()
+            None
           case Success(x) =>
             val output = scalafmtSession.formatOrError(path, x)
             /* no need to report on exception since for all errors
              * reporter.error would have been called already */
             Option(output.value) match {
-              case None => bad += 1
+              case None =>
+                bad.incrementAndGet()
+                None
               case Some(o) =>
-                if (x == o) good += 1 else res = onFormat(res, file, x, o)
+                if (x == o) { good.incrementAndGet(); None }
+                else Some((file, x, o))
             }
         }
       }
-      if (bad != 0) {
-        val err = s"failed for $bad sources"
+      val changed: Seq[(File, Input, Output)] =
+        if (parallelism <= 1 || sources.lengthCompare(1) <= 0) sources
+          .flatMap(formatOne)
+        else {
+          val pool = Executors.newFixedThreadPool(parallelism)
+          try {
+            val futures = sources.map { file =>
+              pool.submit(new Callable[Option[(File, Input, Output)]] {
+                override def call() = formatOne(file)
+              })
+            }
+            futures.flatMap { f =>
+              try f.get()
+              catch { case e: ExecutionException => throw e.getCause }
+            }
+          } finally pool.shutdown()
+        }
+      changed.foreach { case (file, in, out) => onFormat(file, in, out) }
+      val badCount = bad.get()
+      if (badCount != 0) {
+        val err = s"failed for $badCount sources"
         if (!errorHandling.failOnErrors) log.error(err)
         else throw messageException(err)
       }
-      log.debug(s"Unchanged $good Scala sources")
-      res
+      log.debug(s"Unchanged ${good.get()} Scala sources")
     }
 
     def formatTrackedSources(sources: Seq[File], dirs: Seq[File]): Unit = {
@@ -304,9 +333,10 @@ object ScalafmtPlugin extends AutoPlugin {
     private def formatFilteredSources(sources: Seq[File]): Unit = {
       if (sources.nonEmpty) log
         .info(s"Formatting ${sources.length} Scala sources ($baseDir)...")
-      val cnt = withFormattedSources(0, sources) { (res, file, _, output) =>
+      var cnt = 0
+      withFormattedSources(sources) { (file, _, output) =>
         IO.write(file, output)
-        res + 1
+        cnt += 1
       }
       if (cnt > 0) log.info(s"Reformatted $cnt Scala sources")
     }
@@ -340,7 +370,7 @@ object ScalafmtPlugin extends AutoPlugin {
       if (sources.nonEmpty) log
         .info(s"Checking ${sources.size} Scala sources ($baseDir)...")
       val unformatted = Set.newBuilder[File]
-      withFormattedSources((), sources) { (_, file, input, output) =>
+      withFormattedSources(sources) { (file, input, output) =>
         val diff =
           if (errorHandling.printDiff) DiffUtils
             .unifiedDiff("/" + asRelative(file), input, output)
@@ -355,7 +385,6 @@ object ScalafmtPlugin extends AutoPlugin {
           }
         log.warn(msg)
         unformatted += file
-        ()
       }
       ScalafmtAnalysis(failedScalafmtCheck = unformatted.result())
     }
