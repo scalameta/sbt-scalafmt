@@ -71,6 +71,12 @@ object ScalafmtPlugin extends AutoPlugin {
     )
     val scalafmtPrintDiff =
       settingKey[Boolean]("Enables full diff output when running check.")
+    val scalafmtParallelism = settingKey[Int](
+      "Maximum number of threads used to format files within a single task " +
+        "(per project/configuration). Default 1 (sequential). Higher values " +
+        "format many files concurrently, but each simultaneous scalafmt task " +
+        "will use up to this many threads.",
+    )
   }
 
   import autoImport.*
@@ -135,6 +141,7 @@ object ScalafmtPlugin extends AutoPlugin {
       errorHandling: ErrorHandling,
       csrConfiguration: lmcoursier.CoursierConfiguration,
       updateConfiguration: lm.UpdateConfiguration,
+      parallelism: Int,
   ) {
     locally {
       import Ordering.Implicits.*
@@ -489,6 +496,7 @@ object ScalafmtPlugin extends AutoPlugin {
         ),
         csrConfiguration.value,
         updateConfiguration.value,
+        scalafmtParallelism.value,
       )
       func(files, dirs, session)
     }
@@ -537,6 +545,7 @@ object ScalafmtPlugin extends AutoPlugin {
         ),
         csrConfiguration.value,
         updateConfiguration.value,
+        scalafmtParallelism.value,
       ).formatSources(absFiles, Nil)
     },
   ))
@@ -562,6 +571,7 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtFailOnErrors := true,
     scalafmtPrintDiff := false,
     scalafmtDetailedError := false,
+    scalafmtParallelism := 1,
   )
 
   private def getFileMatcher(paths: Seq[Path]): Path => Boolean = {
