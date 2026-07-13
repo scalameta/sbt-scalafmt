@@ -230,3 +230,12 @@ $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
 > scalafmtSbt
 > checkManagedSources
+
+# parallel formatting (scalafmtParallelism > 1) across many files
+-> p21/Compile/scalafmtCheck
+-> p21/Test/scalafmtCheck
+> p21/Compile/scalafmt
+> p21/Test/scalafmt
+> p21/Compile/scalafmtCheck
+> p21/Test/scalafmtCheck
+> checkP21

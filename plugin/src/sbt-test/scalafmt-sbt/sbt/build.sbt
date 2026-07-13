@@ -97,6 +97,10 @@ lazy val p20 = project.settings(
   scalafmtConfig := file(".scalafmt20.conf"),
   scalaVersion := "2.12.21"
 )
+lazy val p21 = project.settings(
+  scalaVersion := "2.12.21",
+  scalafmtParallelism := 4
+)
 
 def assertContentsEqual(file: File, expected: String): Unit = {
   val obtained =
@@ -282,6 +286,24 @@ InputKey[Unit]("check") := {
   )
 }
 
+
+InputKey[Unit]("checkP21") := {
+  def expected(name: String) =
+    s"""
+       |object Obj$name {
+       |  def foo(
+       |    a: Int, // comment
+       |    b: Double
+       |  ) = ???
+       |}
+    """.stripMargin
+  Seq("A", "B", "C", "D", "E", "F").foreach { n =>
+    assertContentsEqual(file(s"p21/src/main/scala/$n.scala"), expected(n))
+  }
+  Seq("G", "H").foreach { n =>
+    assertContentsEqual(file(s"p21/src/test/scala/$n.scala"), expected(n))
+  }
+}
 
 InputKey[Unit]("checkManagedSources") := {
   assertContentsEqual(
