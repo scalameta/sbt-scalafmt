@@ -61,6 +61,17 @@ object ScalafmtPlugin extends AutoPlugin {
       "Execute the scalafmtCheck task for all configurations in which it is enabled. " +
         "(By default this means the Compile and Test configurations.)",
     )
+    @transient
+    val scalafmtRepo = taskKey[Unit](
+      "Format every file under this project's base directory the way the scalafmt " +
+        "CLI would (git-tracked files, or a filesystem walk), independent of sbt's " +
+        "configured source directories.",
+    )
+    @transient
+    val scalafmtCheckRepo = taskKey[Unit](
+      "Fail if any file under this project's base directory is mis-formatted, " +
+        "discovering files the way the scalafmt CLI would. Does not write to files.",
+    )
     val scalafmtDetailedError = settingKey[Boolean](
       "Enables logging of detailed errors with stacktraces, disabled by default",
     )
@@ -366,6 +377,36 @@ object ScalafmtPlugin extends AutoPlugin {
     def checkSources(sources: Seq[File], dirs: Seq[File]): Unit =
       throwOnFailure(checkFilteredSources(filterFiles(sources, dirs)))
 
+    // Discover files the way the scalafmt CLI does -- git-tracked when the config
+    // enables git, else a filesystem walk from baseDir -- independent of sbt's
+    // configured source directories. Reuses scalafmt-sysops' BatchPathFinder, the
+    // same discovery the CLI uses. The session (built for the repo tasks with
+    // FilterMode.none) applies no further git filtering downstream.
+    private def repoSources: Seq[File] = {
+      val base = AbsoluteFile(baseDir)
+      // besides the config's own filters, skip sbt output and VCS/hidden
+      // directories (a file whose parent path, relative to base, contains a
+      // "target" or dot-prefixed segment)
+      def inExcludedDir(path: Path): Boolean = {
+        val rel = base.path.relativize(path)
+        (0 until rel.getNameCount - 1).exists { i =>
+          val seg = rel.getName(i).toString
+          seg == "target" || seg.startsWith(".")
+        }
+      }
+      val matches: Path => Boolean = path =>
+        scalafmtSession.matchesProjectFilters(path) && !inExcludedDir(path)
+      val finder: BatchPathFinder =
+        if (scalafmtSession.isGitOnly)
+          new BatchPathFinder.GitFiles(GitOps.FactoryImpl(base))(matches)
+        else new BatchPathFinder.DirFiles(base)(matches)
+      finder.findFiles().map(_.jfile)
+    }
+
+    def formatRepo(): Unit = formatSources(repoSources, Nil)
+
+    def checkRepo(): Unit = checkSources(repoSources, Nil)
+
     private def checkFilteredSources(sources: Seq[File]): ScalafmtAnalysis = {
       if (sources.nonEmpty) log
         .info(s"Checking ${sources.size} Scala sources ($baseDir)...")
@@ -531,6 +572,31 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   }
 
+  private def getScalafmtRepoTask(check: Boolean) = Def.taskDyn[Unit] {
+    val session = new FormatSession(
+      sbtVersion.value,
+      scalaConfig.value,
+      streams.value,
+      (scalafmt / streams).value.cacheStoreFactory,
+      fullResolvers.value,
+      credentials.value,
+      thisProject.value,
+      // discovery already selects the files; don't re-filter by git downstream
+      FilterMode.none,
+      new ErrorHandling(
+        scalafmtPrintDiff.value,
+        scalafmtLogOnEachError.value,
+        scalafmtFailOnErrors.value,
+        scalafmtDetailedError.value,
+      ),
+      csrConfiguration.value,
+      updateConfiguration.value,
+      scalafmtParallelism.value,
+    )
+    Def.task(if (check) session.checkRepo() else session.formatRepo())
+      .tag(ScalafmtTagPack*)
+  }
+
   def scalafmtConfigSettings(conf: Configuration) = inConfig(conf)(Seq(
     scalafmt := getScalafmtSourcesTask(scalafmtTask).value,
     scalafmtIncremental := scalafmt.value,
@@ -589,6 +655,8 @@ object ScalafmtPlugin extends AutoPlugin {
         scalafmtAll := scalafmt.?.all(anyConfigsInThisProject).unit.value,
         scalafmtCheckAll := scalafmtCheck.?.all(anyConfigsInThisProject)
           .unit.value,
+        scalafmtRepo := getScalafmtRepoTask(check = false).value,
+        scalafmtCheckRepo := getScalafmtRepoTask(check = true).value,
       )
 
   override def buildSettings: Seq[Def.Setting[?]] =
