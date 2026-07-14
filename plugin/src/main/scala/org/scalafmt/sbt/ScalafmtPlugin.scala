@@ -105,6 +105,9 @@ object ScalafmtPlugin extends AutoPlugin {
   private val scalafmtNoThrow =
     taskKey[Unit]("Format Scala sources with scalafmt, ignore failures.")
 
+  private val scalafmtSbtCheckOnLoad =
+    taskKey[Unit]("Run scalafmtSbtCheck on load, warning instead of failing.")
+
   private val scalaConfig = scalafmtConfig.map { f =>
     if (f.exists()) f.toPath
     else throw messageException(s"File does not exist: ${f.toPath}")
@@ -605,6 +608,16 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtSbtCheck := getScalafmtSbtTasks(scalafmtSbtCheckTask).value,
     scalafmtNoThrow :=
       getScalafmtSourcesTask(scalafmtTask, noThrow = true).result.unit.value,
+    scalafmtSbtCheckOnLoad := {
+      val log = streams.value.log
+      // don't let a load-time check fail sbt startup: warn instead. Match on
+      // Result.toEither (Left = failed) since Inc/Value differ between sbt 1 & 2
+      scalafmtSbtCheck.result.value.toEither match {
+        case Left(_) =>
+          log.warn("scalafmt: *.sbt or project/*.scala are not formatted; run scalafmtSbt")
+        case Right(_) =>
+      }
+    },
     scalafmtDoFormatOnCompile := Def.settingDyn {
       if (scalafmtOnCompile.value) resolvedScoped.value.scope / scalafmtNoThrow
       else Def.task(())
@@ -671,6 +684,19 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtDetailedError := false,
     scalafmtParallelism := 1,
     scalafmtSbtOnLoad := SbtOnLoad.off,
+    // sbt build files are (re)compiled on load, not on `compile`, so hook the
+    // load lifecycle to keep them formatted (see #2)
+    Global / onLoad := {
+      val transition: State => State = { state =>
+        Project.extract(state).getOpt(scalafmtSbtOnLoad) match {
+          case Some(SbtOnLoad.run) => "scalafmtSbt" :: state
+          case Some(SbtOnLoad.warn) => "scalafmtSbtCheckOnLoad" :: state
+          case _ => state
+        }
+      }
+      // compose over any onLoad from other plugins rather than replacing it
+      transition.compose((Global / onLoad).value)
+    },
   )
 
   private def getFileMatcher(paths: Seq[Path]): Path => Boolean = {

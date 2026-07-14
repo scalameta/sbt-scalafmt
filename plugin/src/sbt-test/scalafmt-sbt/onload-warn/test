@@ -1,0 +1,2 @@
+# warn mode: load succeeds (warning only), build file left unformatted
+$ must-mirror project/Foo.scala expected/Foo.scala
