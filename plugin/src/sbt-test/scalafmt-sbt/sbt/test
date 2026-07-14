@@ -245,3 +245,16 @@ $ exec git init -b main p22
 $ copy-file changes/bad.scala p22/src/main/scala/OnlyFile.scala
 > p22/scalafmtOnly src/main/scala/OnlyFile.scala
 $ must-mirror p22/src/main/scala/OnlyFile.scala changes/good.scala
+
+# scalafmtRepo formats files in non-source dirs, which scalafmtAll misses
+$ copy-file changes/bad.scala p24/src/main/scala/Bar.scala
+$ copy-file changes/bad.scala p24/extra/Deep.scala
+> p24/scalafmtAll
+# scalafmtAll formatted the source-dir file but not the one under extra/
+$ must-mirror p24/src/main/scala/Bar.scala changes/good.scala
+$ must-mirror p24/extra/Deep.scala changes/bad.scala
+# scalafmtCheckRepo flags it; scalafmtRepo formats it
+-> p24/scalafmtCheckRepo
+> p24/scalafmtRepo
+> p24/scalafmtCheckRepo
+$ must-mirror p24/extra/Deep.scala changes/good.scala
