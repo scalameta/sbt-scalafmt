@@ -565,7 +565,8 @@ object ScalafmtPlugin extends AutoPlugin {
         fullResolvers.value,
         credentials.value,
         thisProject.value,
-        "",
+        // files are named explicitly, so don't filter them by git tracking
+        FilterMode.none,
         new ErrorHandling(
           scalafmtPrintDiff.value,
           scalafmtLogOnEachError.value,
