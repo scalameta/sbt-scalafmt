@@ -62,15 +62,11 @@ object ScalafmtPlugin extends AutoPlugin {
         "(By default this means the Compile and Test configurations.)",
     )
     @transient
-    val scalafmtRepo = taskKey[Unit](
-      "Format every file under this project's base directory the way the scalafmt " +
-        "CLI would (git-tracked files, or a filesystem walk), independent of sbt's " +
-        "configured source directories.",
-    )
+    val scalafmtRepo =
+      taskKey[Unit]("Format files under the project base like the scalafmt CLI, not just sbt sources.")
     @transient
     val scalafmtCheckRepo = taskKey[Unit](
-      "Fail if any file under this project's base directory is mis-formatted, " +
-        "discovering files the way the scalafmt CLI would. Does not write to files.",
+      "Like scalafmtRepo but only checks formatting; does not write.",
     )
     val scalafmtDetailedError = settingKey[Boolean](
       "Enables logging of detailed errors with stacktraces, disabled by default",
@@ -84,12 +80,8 @@ object ScalafmtPlugin extends AutoPlugin {
     )
     val scalafmtPrintDiff =
       settingKey[Boolean]("Enables full diff output when running check.")
-    val scalafmtParallelism = settingKey[Int](
-      "Maximum number of threads used to format files within a single task " +
-        "(per project/configuration). Default 1 (sequential). Higher values " +
-        "format many files concurrently, but each simultaneous scalafmt task " +
-        "will use up to this many threads.",
-    )
+    val scalafmtParallelism =
+      settingKey[Int]("Number of threads to format files within a task; 1 (default) is sequential.")
   }
 
   import autoImport.*
