@@ -82,6 +82,8 @@ object ScalafmtPlugin extends AutoPlugin {
       settingKey[Boolean]("Enables full diff output when running check.")
     val scalafmtParallelism =
       settingKey[Int]("Number of threads to format files within a task; 1 (default) is sequential.")
+    val scalafmtSbtOnLoad =
+      settingKey[String]("Process build files on sbt (re)load: \"off\" (default), \"run\", or \"warn\".")
   }
 
   import autoImport.*
@@ -120,6 +122,12 @@ object ScalafmtPlugin extends AutoPlugin {
     val diffDirty = "diff-dirty"
     val diffRefPrefix = "diff-ref="
     val none = "none"
+  }
+
+  private object SbtOnLoad {
+    val off = "off"
+    val run = "run"
+    val warn = "warn"
   }
 
   private def getLogMessage(message: String): String = "scalafmt: " + message
@@ -662,6 +670,7 @@ object ScalafmtPlugin extends AutoPlugin {
     scalafmtPrintDiff := false,
     scalafmtDetailedError := false,
     scalafmtParallelism := 1,
+    scalafmtSbtOnLoad := SbtOnLoad.off,
   )
 
   private def getFileMatcher(paths: Seq[Path]): Path => Boolean = {
