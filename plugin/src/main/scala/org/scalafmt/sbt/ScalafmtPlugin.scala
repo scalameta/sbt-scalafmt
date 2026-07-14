@@ -126,7 +126,7 @@ object ScalafmtPlugin extends AutoPlugin {
 
   private class ScalafmtLogger(log: Logger) extends Logger {
     override def trace(t: => Throwable): Unit = log.trace(t)
-    override def success(message: => String): Unit = success(message)
+    override def success(message: => String): Unit = log.success(message)
     override def log(level: Level.Value, message: => String): Unit = log
       .log(level, getLogMessage(message))
   }
