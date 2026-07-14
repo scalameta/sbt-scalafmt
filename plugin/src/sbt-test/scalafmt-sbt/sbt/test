@@ -239,3 +239,9 @@ $ copy-file changes/x/Something.scala project/x/Something.scala
 > p21/Compile/scalafmtCheck
 > p21/Test/scalafmtCheck
 > checkP21
+
+# scalafmtOnly must format an explicitly-named file even if untracked by git
+$ exec git init -b main p22
+$ copy-file changes/bad.scala p22/src/main/scala/OnlyFile.scala
+> p22/scalafmtOnly src/main/scala/OnlyFile.scala
+$ must-mirror p22/src/main/scala/OnlyFile.scala changes/good.scala
