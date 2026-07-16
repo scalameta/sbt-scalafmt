@@ -43,11 +43,12 @@ object ScalafmtPlugin extends AutoPlugin {
         "If the file does not exist, exception is thrown.",
     )
     @transient
-    val scalafmtSbt =
-      taskKey[Unit]("Format *.sbt and project/*.scala files for this sbt build.")
+    val scalafmtSbt = taskKey[Unit](
+      "Format *.sbt and project/**/*.scala files for this sbt build.",
+    )
     @transient
     val scalafmtSbtCheck = taskKey[Unit](
-      "Fails if a *.sbt or project/*.scala source is mis-formatted. " +
+      "Fails if a *.sbt or project/**/*.scala source is mis-formatted. " +
         "Does not write to files.",
     )
     val scalafmtOnly = inputKey[Unit]("Format a single given file.")
