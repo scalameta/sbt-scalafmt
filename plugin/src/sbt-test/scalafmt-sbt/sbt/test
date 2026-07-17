@@ -228,6 +228,8 @@ $ exec git -C p20 add src/main/scala/TestInvalid1.scala
 
 $ copy-file changes/target/managed.scala project/target/managed.scala
 $ copy-file changes/x/Something.scala project/x/Something.scala
+$ copy-file changes/target/managed.sbt project/target/managed.sbt
+$ copy-file changes/x/Something.sbt project/x/Something.sbt
 > scalafmtSbt
 > checkManagedSources
 
