@@ -464,6 +464,18 @@ object ScalafmtPlugin extends AutoPlugin {
     }
   }
 
+  // Descendants of the build's project/ directory matching glob, excluding the
+  // metabuild's own target/ output (which scalafmt should never format).
+  private def metabuildDescendants(base: File, glob: String): Seq[File] = {
+    val projectDirectory = BuildPaths.projectStandard(base)
+    val targetDirectory = BuildPaths.outputDirectory(projectDirectory)
+      .getAbsolutePath
+    projectDirectory.descendantsExcept(
+      glob,
+      (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory),
+    ).get()
+  }
+
   private lazy val sbtSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
     val thisBase = thisProject.value.base
@@ -478,16 +490,7 @@ object ScalafmtPlugin extends AutoPlugin {
   private lazy val metabuildSources = Def.task {
     val rootBase = (LocalRootProject / baseDirectory).value
     val thisBase = thisProject.value.base
-
-    if (rootBase == thisBase) {
-      val projectDirectory = BuildPaths.projectStandard(thisBase)
-      val targetDirectory = BuildPaths.outputDirectory(projectDirectory)
-        .getAbsolutePath
-      projectDirectory.descendantsExcept(
-        "*.scala",
-        (pathname: File) => pathname.getAbsolutePath.startsWith(targetDirectory),
-      ).get()
-    } else Nil
+    if (rootBase == thisBase) metabuildDescendants(thisBase, "*.scala") else Nil
   }
 
   private def scalafmtTask(
