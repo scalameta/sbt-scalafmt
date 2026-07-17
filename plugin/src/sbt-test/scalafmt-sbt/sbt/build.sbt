@@ -329,4 +329,23 @@ InputKey[Unit]("checkManagedSources") := {
       |object a       {}
       |""".stripMargin
   )
+
+  assertContentsEqual(
+    file("project/x/Something.sbt"),
+    """
+      |// format me
+      |object kek {}
+      |""".stripMargin
+  )
+
+  // BUG: managed.sbt is under project/target and should be left untouched
+  // like the adjacent *.scala scan does, but the *.sbt scan reformats it
+  assertContentsEqual(
+    file("project/target/managed.sbt"),
+    """
+      |// don't touch me!!!
+      |
+      |object a {}
+      |""".stripMargin
+  )
 }
