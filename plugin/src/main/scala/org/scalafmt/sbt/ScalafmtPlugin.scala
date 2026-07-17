@@ -481,9 +481,7 @@ object ScalafmtPlugin extends AutoPlugin {
     val thisBase = thisProject.value.base
     val rootSbt = BuildPaths.configurationSources(thisBase).filterNot(_.isHidden)
     val metabuildSbt =
-      if (rootBase == thisBase)
-        (BuildPaths.projectStandard(thisBase) ** GlobFilter("*.sbt")).get()
-      else Nil
+      if (rootBase == thisBase) metabuildDescendants(thisBase, "*.sbt") else Nil
     rootSbt ++ metabuildSbt
   }
 
