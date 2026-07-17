@@ -381,30 +381,27 @@ object ScalafmtPlugin extends AutoPlugin {
     def checkSources(sources: Seq[File], dirs: Seq[File]): Unit =
       throwOnFailure(checkFilteredSources(filterFiles(sources, dirs)))
 
-    // Discover files the way the scalafmt CLI does -- git-tracked when the config
-    // enables git, else a filesystem walk from baseDir -- independent of sbt's
-    // configured source directories. Reuses scalafmt-sysops' BatchPathFinder, the
-    // same discovery the CLI uses. The session (built for the repo tasks with
+    // Discover files under this project's base directory the way the scalafmt
+    // CLI does -- git-tracked when the config enables git, else a filesystem
+    // walk -- independent of sbt's configured source directories. Delegates to
+    // the session's own discovery; the returned files already match the config's
+    // project filters. The session (built for the repo tasks with
     // FilterMode.none) applies no further git filtering downstream.
     private def repoSources: Seq[File] = {
-      val base = AbsoluteFile(baseDir)
-      // besides the config's own filters, skip sbt output and VCS/hidden
-      // directories (a file whose parent path, relative to base, contains a
-      // "target" or dot-prefixed segment)
+      // listFiles applies only the config's project filters, so -- besides those
+      // -- skip sbt output and VCS/hidden directories (a file whose parent path,
+      // relative to baseDir, contains a "target" or dot-prefixed segment)
       def inExcludedDir(path: Path): Boolean = {
-        val rel = base.path.relativize(path)
+        val rel = baseDir.relativize(path)
         (0 until rel.getNameCount - 1).exists { i =>
           val seg = rel.getName(i).toString
           seg == "target" || seg.startsWith(".")
         }
       }
-      val matches: Path => Boolean = path =>
-        scalafmtSession.matchesProjectFilters(path) && !inExcludedDir(path)
-      val finder: BatchPathFinder =
-        if (scalafmtSession.isGitOnly)
-          new BatchPathFinder.GitFiles(GitOps.FactoryImpl(base))(matches)
-        else new BatchPathFinder.DirFiles(base)(matches)
-      finder.findFiles().map(_.jfile)
+      val out = Seq.newBuilder[File]
+      scalafmtSession.listFiles(baseDir)
+        .forEach(p => if (!inExcludedDir(p)) out += p.toFile)
+      out.result()
     }
 
     def formatRepo(): Unit = formatSources(repoSources, Nil)
