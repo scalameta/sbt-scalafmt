@@ -253,8 +253,16 @@ $ copy-file changes/bad.scala p24/extra/Deep.scala
 # scalafmtAll formatted the source-dir file but not the one under extra/
 $ must-mirror p24/src/main/scala/Bar.scala changes/good.scala
 $ must-mirror p24/extra/Deep.scala changes/bad.scala
+# scalafmtRepo skips build output and hidden dirs, at any depth
+$ copy-file changes/bad.scala p24/target/Gen.scala
+$ copy-file changes/bad.scala p24/nested/target/Deep2.scala
+$ copy-file changes/bad.scala p24/.hidden/Secret.scala
 # scalafmtCheckRepo flags it; scalafmtRepo formats it
 -> p24/scalafmtCheckRepo
 > p24/scalafmtRepo
 > p24/scalafmtCheckRepo
 $ must-mirror p24/extra/Deep.scala changes/good.scala
+# files under target/ and hidden dirs are left untouched
+$ must-mirror p24/target/Gen.scala changes/bad.scala
+$ must-mirror p24/nested/target/Deep2.scala changes/bad.scala
+$ must-mirror p24/.hidden/Secret.scala changes/bad.scala
