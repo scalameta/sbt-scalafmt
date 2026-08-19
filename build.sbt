@@ -80,7 +80,7 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   pluginCrossBuild / sbtVersion := {
     if (!isScala3.value) "1.12.9"
     else if (!isJavaAtLeast("17")) sys.error("Scala 3 requires JDK 17+")
-    else "2.0.0-RC11"
+    else "2.0.0"
   },
   conflictWarning := {
     if (!isScala3.value) conflictWarning.value
