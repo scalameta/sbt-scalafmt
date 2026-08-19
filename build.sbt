@@ -46,7 +46,7 @@ inThisBuild(List(
     ),
   ),
   scalaVersion := scala2,
-  crossScalaVersions += scala3,
+  crossScalaVersions := Seq(scala2, scala3),
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
