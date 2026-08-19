@@ -50,7 +50,7 @@ inThisBuild(List(
   packageDoc / publishArtifact := insideCI.value,
   packageSrc / publishArtifact := insideCI.value,
 ))
-publish / skip := true
+LocalRootProject / publish / skip := true
 
 onLoadMessage :=
   s"Welcome to sbt-scalafmt ${version.value} (scalafmt $scalafmtVersion)"
