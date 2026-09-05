@@ -2,7 +2,7 @@ import scala.util.Properties.isJavaAtLeast
 
 val scalafmtVersion = "3.11.5"
 val scala2 = "2.12.21"
-val scala3 = "3.8.4"
+val scala3 = "3.9.0"
 
 addCommandAlias("test2", s"++$scala2 plugin/scripted")
 addCommandAlias("test3", s"++$scala3 plugin/scripted")
