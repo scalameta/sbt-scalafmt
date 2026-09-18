@@ -1,6 +1,5 @@
 # sbt-scalafmt
-[![Join the chat at https://gitter.im/scalameta/scalafmt](https://badges.gitter.im/scalameta/scalafmt.svg)](https://gitter.im/scalameta/scalafmt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Join the discord chat](https://img.shields.io/discord/632642981228314653?label=discord)](https://discordapp.com/channels/632642981228314653/632665341864181780)
+[![Join the discord chat](https://img.shields.io/discord/632642981228314653?label=discord)](https://discord.gg/N43mbnH)
 [![Latest version](https://index.scala-lang.org/scalameta/sbt-scalafmt/latest.svg?kill_cache=1)](https://index.scala-lang.org/scalameta/sbt-scalafmt)
 
 This is the repository for the Scalafmt sbt plugin, for the main Scalafmt
