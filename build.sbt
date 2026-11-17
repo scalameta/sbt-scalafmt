@@ -2,7 +2,7 @@ import scala.util.Properties.isJavaAtLeast
 
 val scalafmtVersion = "3.11.5"
 val scala2 = "2.12.21"
-val scala3 = "3.8.4"
+val scala3 = "3.9.0"
 
 addCommandAlias("test2", s"++$scala2 plugin/scripted")
 addCommandAlias("test3", s"++$scala3 plugin/scripted")
@@ -80,13 +80,14 @@ lazy val plugin = project.enablePlugins(SbtPlugin, ScriptedPlugin).settings(
   pluginCrossBuild / sbtVersion := {
     if (!isScala3.value) "1.12.9"
     else if (!isJavaAtLeast("17")) sys.error("Scala 3 requires JDK 17+")
-    else "2.0.0"
+    else "2.1.0"
   },
   conflictWarning := {
     if (!isScala3.value) conflictWarning.value
     else ConflictWarning("warn", Level.Warn, failOnConflict = false)
   },
   scalacOptions += { if (isScala3.value) "-release:17" else "-release:8" },
+  scalacOptions ++= { if (isScala3.value) Nil else List("-Xsource:3") },
 )
 
 // For some reason, it doesn't work if this is defined in globalSettings in PublishPlugin.

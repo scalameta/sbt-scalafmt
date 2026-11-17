@@ -1,9 +1,8 @@
 package org.scalafmt.sbt
 
-import sbt.internal.librarymanagement.ivy.IvyCredentials
-import sbt.librarymanagement.Credentials
+import sbt.librarymanagement.{CredentialUtils, Credentials}
 
 object CredentialsUtils {
-  def toDirect(c: Credentials): Credentials.DirectCredentials = IvyCredentials
+  def toDirect(c: Credentials): Credentials.DirectCredentials = CredentialUtils
     .toDirect(c)
 }

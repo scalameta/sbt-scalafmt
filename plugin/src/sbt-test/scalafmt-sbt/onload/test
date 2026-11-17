@@ -1,2 +1,3 @@
 # run mode: metabuild file formatted on load
+> show name
 $ must-mirror project/Foo.scala expected/Foo.scala
